@@ -50,7 +50,13 @@
   ],
   "references": [
     {
+      "path": "../../libs/shared"
+    },
+    {
       "path": "../../libs/contracts"
+    },
+    {
+      "path": "../../libs/auth"
     }
   ]
 }

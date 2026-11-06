@@ -11,7 +11,26 @@
       "import": "./src/index.ts",
       "default": "./src/index.ts"
     },
+    "./server": {
+      "types": "./src/server/index.ts",
+      "import": "./src/server/index.ts",
+      "default": "./src/server/index.ts"
+    },
+    "./client": {
+      "types": "./src/server/auth-client.ts",
+      "import": "./src/server/auth-client.ts",
+      "default": "./src/server/auth-client.ts"
+    },
+    "./proxy-signature": {
+      "types": "./src/lib/proxy-signature.ts",
+      "import": "./src/lib/proxy-signature.ts",
+      "default": "./src/lib/proxy-signature.ts"
+    },
     "./package.json": "./package.json"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@sass-project/shared": "0.0.1",
+    "@sass-project/database": "0.0.1",
+    "better-auth": "^1.7.7"
+  }
 }

@@ -1,9 +1,7 @@
 import { GraphQLError } from 'graphql';
-import type { PrismaClient } from '@sass-project/database';
+import type { ApiContext } from './auth.context.js';
 
-type TodoContext = {
-  prisma: PrismaClient;
-};
+type TodoContext = Pick<ApiContext, 'prisma'>;
 
 type TodoRecord = {
   id: string;

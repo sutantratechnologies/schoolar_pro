@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import {
   Mail,
   Lock,
@@ -14,33 +15,100 @@ import {
   ShieldCheck,
   Globe2,
 } from 'lucide-react';
+import {
+  authClient,
+  fetchCurrentSession,
+  getAuthProviderConfig,
+} from '@/lib/auth';
+import {
+  getAppTarget,
+  getHomePath,
+  isUserRole,
+  TARGET_POLICIES,
+} from '@/lib/auth/targets';
 
 export default function LoginPage() {
+  const router = useRouter();
+  const target = getAppTarget();
+  const targetPolicy = TARGET_POLICIES[target];
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [googleEnabled, setGoogleEnabled] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('verified') === '1') {
+      setEmail(searchParams.get('email') ?? '');
+      setSuccessMessage('Your email is verified. You can now sign in.');
+    }
+
+    void getAuthProviderConfig()
+      .then(({ googleOAuthEnabled }) => setGoogleEnabled(googleOAuthEnabled))
+      .catch(() => setGoogleEnabled(false));
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     setSuccessMessage('');
+    setErrorMessage('');
 
-    // Simulate authenticating
-    setTimeout(() => {
+    try {
+      const { error } = await authClient.signIn.email({
+        email,
+        password,
+        rememberMe,
+        callbackURL: window.location.origin,
+      });
+
+      if (error) {
+        setErrorMessage(
+          error.status === 401
+            ? 'No account is registered with these credentials.'
+            : error.message || 'Unable to sign in. Please try again.'
+        );
+        return;
+      }
+
+      const session = await fetchCurrentSession();
+      const role = session?.user.role;
+      const home = isUserRole(role) ? getHomePath(target, role) : undefined;
+      if (!home) {
+        setErrorMessage('No account is registered with these credentials.');
+        return;
+      }
+
+      router.replace(home);
+    } catch {
+      setErrorMessage('Unable to reach the authentication service. Try again.');
+    } finally {
       setIsLoading(false);
-      setSuccessMessage('Student sign in successful! Redirecting to your dashboard...');
-    }, 1000);
+    }
   };
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     setIsLoading(true);
-    setTimeout(() => {
+    setErrorMessage('');
+
+    try {
+      const { error } = await authClient.signIn.social({
+        provider: 'google',
+        callbackURL: window.location.origin,
+      });
+
+      if (error) {
+        setErrorMessage(error.message || 'Unable to continue with Google.');
+        setIsLoading(false);
+      }
+    } catch {
+      setErrorMessage('Unable to reach the authentication service. Try again.');
       setIsLoading(false);
-      setSuccessMessage('Connecting student account with Google...');
-    }, 800);
+    }
   };
 
   return (
@@ -49,7 +117,11 @@ export default function LoginPage() {
       <div className="w-full lg:w-1/2 min-h-screen flex flex-col justify-between p-6 sm:p-10 lg:p-14 bg-white">
         {/* Top Header */}
         <div className="w-full flex items-center justify-between">
-          <Link href="/" className="inline-block group focus:outline-hidden" aria-label="BidyaGo Home">
+          <Link
+            href={target === 'main' ? '/' : '/login'}
+            className="inline-block group focus:outline-hidden"
+            aria-label="BidyaGo Home"
+          >
             <Image
               src="/bidyago_logo.png"
               alt="BidyaGo"
@@ -60,31 +132,44 @@ export default function LoginPage() {
             />
           </Link>
 
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 text-xs font-normal text-slate-500 hover:text-slate-900 transition-colors"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to Home</span>
-          </Link>
+          {target === 'main' && (
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-xs font-normal text-slate-500 hover:text-slate-900 transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back to Home</span>
+            </Link>
+          )}
         </div>
 
         {/* Center: Student Login Form */}
         <div className="w-full max-w-md mx-auto my-auto py-8 space-y-7">
           <div className="space-y-2">
             <span className="text-xs font-normal text-slate-400 uppercase tracking-widest block">
-              Student Sign In
+              {target === 'main'
+                ? 'Student Sign In'
+                : target === 'portal'
+                  ? 'Administration Portal'
+                  : 'Organization Workspace'}
             </span>
             <h1 className="text-3xl sm:text-4xl font-light text-slate-900 tracking-tight">
-              Welcome Back
+              {target === 'main'
+                ? 'Welcome Back'
+                : target === 'portal'
+                  ? 'Sign in to your portal'
+                  : 'Sign in to your workspace'}
             </h1>
             <p className="text-sm text-slate-500 font-normal">
-              Sign in to access your saved scholarships, tracked applications, and personal matching matrix.
+              {target === 'main'
+                ? 'Sign in to access your saved scholarships, tracked applications, and personal matching matrix.'
+                : target === 'portal'
+                  ? 'Sign in with your authorized administrator account.'
+                  : 'Sign in with your organization account.'}
             </p>
           </div>
 
-          {/* Social Google Login Button */}
-          <div>
+          {googleEnabled && <div>
             <button
               type="button"
               onClick={handleGoogleSignIn}
@@ -111,17 +196,22 @@ export default function LoginPage() {
               </svg>
               <span>Continue with Google</span>
             </button>
-          </div>
+          </div>}
 
-          <div className="relative flex items-center justify-center">
+          {googleEnabled && <div className="relative flex items-center justify-center">
             <div className="border-t border-slate-200/80 w-full" />
             <span className="bg-white px-3 text-[11px] font-normal uppercase tracking-wider text-slate-400 absolute">
               or continue with email
             </span>
-          </div>
+          </div>}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
+            {errorMessage && (
+              <div role="alert" className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800">
+                {errorMessage}
+              </div>
+            )}
             {successMessage && (
               <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-2 text-xs text-emerald-800">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -154,7 +244,7 @@ export default function LoginPage() {
                   Password
                 </label>
                 <Link
-                  href="/#faqs"
+                  href="/forgot-password"
                   className="text-xs font-normal text-[#4b37df] hover:underline"
                 >
                   Forgot password?
@@ -195,7 +285,7 @@ export default function LoginPage() {
                   className="w-3.5 h-3.5 rounded-sm border-slate-300 text-[#4b37df] focus:ring-[#4b37df]"
                 />
                 <span className="text-xs text-slate-600 font-normal">
-                  Remember this device for 30 days
+                  Keep me signed in
                 </span>
               </label>
             </div>
@@ -210,7 +300,11 @@ export default function LoginPage() {
                 <span>Authenticating...</span>
               ) : (
                 <>
-                  <span>Sign In to Dashboard</span>
+                  <span>
+                    {target === 'main'
+                      ? 'Sign In to Dashboard'
+                      : 'Sign In'}
+                  </span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -218,23 +312,19 @@ export default function LoginPage() {
           </form>
 
           {/* Bottom Switcher */}
-          <div className="text-center space-y-2 pt-2">
-            <p className="text-xs text-slate-500 font-normal">
-              New to BidyaGo?{' '}
-              <Link
-                href="/signup"
-                className="text-slate-900 font-medium hover:underline hover:text-[#4b37df] transition-colors"
-              >
-                Create free student account
-              </Link>
-            </p>
-            <p className="text-[11px] text-slate-400 font-normal">
-              Agency or university staff?{' '}
-              <Link href="/organizations" className="text-slate-600 hover:text-slate-950 underline">
-                Partner Portal
-              </Link>
-            </p>
-          </div>
+          {targetPolicy.canRegister && (
+            <div className="text-center space-y-2 pt-2">
+              <p className="text-xs text-slate-500 font-normal">
+                New to BidyaGo?{' '}
+                <Link
+                  href="/signup"
+                  className="text-slate-900 font-medium hover:underline hover:text-[#4b37df] transition-colors"
+                >
+                  Create free student account
+                </Link>
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Bottom Minimal Footer */}

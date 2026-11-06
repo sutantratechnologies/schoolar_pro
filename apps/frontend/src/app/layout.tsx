@@ -1,5 +1,6 @@
 import './global.css';
 import { Plus_Jakarta_Sans } from 'next/font/google';
+import { AuthProvider } from '@/components/auth/AuthProvider';
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -21,8 +22,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${jakarta.variable} scroll-smooth`}>
-      <body className="min-h-screen bg-white text-slate-900 antialiased selection:bg-primary-100 selection:text-primary-700">
-        {children}
+      <body
+        suppressHydrationWarning
+        className="min-h-screen bg-white text-slate-900 antialiased selection:bg-primary-100 selection:text-primary-700"
+      >
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

@@ -1,3 +1,1 @@
-export function auth(): string {
-  return 'auth';
-}
+export { auth } from '../server/auth.js';

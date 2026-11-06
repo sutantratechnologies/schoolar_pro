@@ -124,6 +124,11 @@ service in `compose.yaml` (database `saas_project`, user `devuser`, host port
 `5433`). Keep the generated `.env` local; it is ignored by Git. Do not commit
 credentials, production connection strings, or private API keys.
 
+The frontend and backend load the repository-root `.env`. For the signed
+frontend-to-backend proxy, set `AUTH_PROXY_SECRET` to the same random value in
+that file for both local processes; it must contain at least 32 bytes. Restart
+both processes after changing it.
+
 The web app uses `http://localhost:3333/graphql` by default. To use a different
 GraphQL URL for the web app, add this to the root `.env` before starting Next.js:
 
@@ -315,6 +320,26 @@ database and all of its data.
 
 ## Troubleshooting
 
+### Deploying the frontend to multiple application targets
+
+The same frontend build supports `main`, `portal`, and `workspace`. Each
+frontend deployment must set `NEXT_PUBLIC_APP_TARGET`, `BACKEND_URL`, and a
+private `AUTH_PROXY_SECRET`. See `.env.main.example`, `.env.portal.example`,
+and `.env.workspace.example`. Do not prefix the proxy secret with
+`NEXT_PUBLIC_`.
+
+The shared backend also needs `AUTH_PROXY_SECRET_MAIN`,
+`AUTH_PROXY_SECRET_PORTAL`, and `AUTH_PROXY_SECRET_WORKSPACE`; each must match
+the corresponding frontend deployment's `AUTH_PROXY_SECRET`. Keep these three
+secrets distinct in production. Set `FRONTEND_ORIGINS` to all deployed frontend
+origins and restart the backend after changes.
+
+For local development, run the backend once on port 3333, then start the
+frontend three times on ports 3000, 3001, and 3002 with the matching target
+environment sample. Local development may use the backend's `AUTH_PROXY_SECRET`
+fallback. For production, deploy three frontend projects from this repository
+with their respective target settings and one backend shared by all three.
+
 ### The API cannot be reached
 
 1. Confirm PostgreSQL is running with `npm run db:up`.
@@ -358,4 +383,3 @@ Shared GraphQL schema and operations belong in `libs/contracts`; database
 access belongs in `libs/database`; API resolver and server behavior belongs in
 `apps/backend`. The web client should consume the shared contracts
 rather than maintaining separate copies of the GraphQL operation strings.
-
