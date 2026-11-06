@@ -8,7 +8,4 @@ export {
   pathHasPrefix,
   requiredRolesForPath,
 } from '@sass-project/shared';
-export type {
-  AppTarget,
-  TargetPolicy,
-} from '@sass-project/shared';
+export type { AppTarget, TargetPolicy } from '@sass-project/shared';
