@@ -331,6 +331,23 @@ async function sendAuthEmail({ to, subject, text }: AuthEmail): Promise<void> {
   }
 }
 
+function toPublicAuthUrl(rawUrl: string): string {
+  try {
+    const parsed = new URL(rawUrl);
+    const callbackURL = parsed.searchParams.get('callbackURL');
+    if (callbackURL) {
+      const frontendOrigin = new URL(callbackURL).origin;
+      return `${frontendOrigin}${parsed.pathname}${parsed.search}`;
+    }
+    const defaultFrontend =
+      environment.trustedOrigins.find((o) => o !== environment.baseURL.fallback) ||
+      'http://localhost:3000';
+    return `${defaultFrontend}${parsed.pathname}${parsed.search}`;
+  } catch {
+    return rawUrl;
+  }
+}
+
 export const auth = betterAuth({
   appName: 'BidyaGo',
   baseURL: environment.baseURL,
@@ -346,10 +363,11 @@ export const auth = betterAuth({
     autoSignIn: false,
     revokeSessionsOnPasswordReset: true,
     sendResetPassword: async ({ user, url }) => {
+      const publicUrl = toPublicAuthUrl(url);
       await sendAuthEmail({
         to: user.email,
         subject: 'Reset your BidyaGo password',
-        text: `Use this secure link to reset your password: ${url}`,
+        text: `Use this secure link to reset your password: ${publicUrl}`,
       });
     },
   },
@@ -359,10 +377,11 @@ export const auth = betterAuth({
     autoSignInAfterVerification: false,
     expiresIn: 60 * 60,
     sendVerificationEmail: async ({ user, url }) => {
+      const publicUrl = toPublicAuthUrl(url);
       await sendAuthEmail({
         to: user.email,
         subject: 'Verify your BidyaGo email address',
-        text: `Use this secure link to verify your email address: ${url}`,
+        text: `Use this secure link to verify your email address: ${publicUrl}`,
       });
     },
   },
