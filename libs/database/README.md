@@ -19,15 +19,18 @@ Shared PostgreSQL access for the workspace, using Prisma ORM 7.
    npm run db:push
    ```
 
-The `Todo` model is in `prisma/schema.prisma`; its initial migration is under
-`prisma/migrations`. When changing the schema, create and apply a migration:
+The `Todo`, Better Auth, user-role, organization, application, invitation, and
+audit models are in `prisma/schema.prisma`. The initial Todo migration is kept
+under `prisma/migrations`; new schema changes should use additive migrations:
 
 ```sh
 npm run db:migrate -- --name describe_your_change
 ```
 
 The generated client is exported as `prisma` from `@sass-project/database`.
-The local todo UI is shared and currently has no authentication.
+It is a singleton reused by `@sass-project/auth`. Better Auth is configured in
+`libs/auth`, but the existing Todo GraphQL API has not yet been wired to require
+authentication.
 `npm run db:down` stops and removes the container/network but keeps the named
 volume and its data. Do not use `docker compose down -v` unless you intend to
 delete the local database.

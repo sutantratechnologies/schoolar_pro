@@ -6,7 +6,9 @@
     "sourceRoot": "apps/frontend/src"
   },
   "dependencies": {
+    "@sass-project/auth": "0.0.1",
     "@sass-project/contracts": "0.0.1",
+    "@sass-project/shared": "0.0.1",
     "next": "~16.1.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

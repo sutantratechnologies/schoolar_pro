@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import {
   GraduationCap,
   Bookmark,
@@ -11,9 +12,98 @@ import {
   ArrowRight,
   Clock,
   Compass,
+  LogOut,
 } from 'lucide-react';
+import type { CurrentSession } from '@sass-project/contracts';
+import { authClient, fetchCurrentSession } from '@/lib/auth';
 
 export default function StudentDashboardPage() {
+  const router = useRouter();
+  const [session, setSession] = useState<CurrentSession | null>(null);
+  const [loadingSession, setLoadingSession] = useState(true);
+  const [sessionError, setSessionError] = useState('');
+  const [signingOut, setSigningOut] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    void fetchCurrentSession()
+      .then((currentSession) => {
+        if (!active) {
+          return;
+        }
+
+        if (!currentSession) {
+          router.replace('/login');
+          return;
+        }
+
+        setSession(currentSession);
+      })
+      .catch(() => {
+        if (active) {
+          setSessionError('Unable to verify your session. Please try again.');
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoadingSession(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [router]);
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
+
+    try {
+      const { error } = await authClient.signOut();
+      if (error) {
+        setSessionError(error.message || 'Unable to sign out. Please try again.');
+        return;
+      }
+
+      router.replace('/login');
+    } catch {
+      setSessionError('Unable to reach the authentication service. Try again.');
+    } finally {
+      setSigningOut(false);
+    }
+  };
+
+  if (loadingSession || (!session && !sessionError)) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 text-sm text-slate-600">
+        Checking your session…
+      </main>
+    );
+  }
+
+  if (sessionError || !session) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+        <div role="alert" className="max-w-md rounded-2xl border border-rose-200 bg-white p-6 text-sm text-rose-800">
+          {sessionError || 'Please sign in to continue.'}
+          <div className="mt-4">
+            <Link href="/login" className="font-medium text-[#4b37df] underline">
+              Go to sign in
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const initials = session.user.name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('');
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
       {/* Dashboard Header */}
@@ -37,6 +127,9 @@ export default function StudentDashboardPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            <span className="hidden text-xs text-slate-500 sm:inline">
+              {session.user.name}
+            </span>
             <Link
               href="/scholarships"
               className="text-xs font-medium text-slate-600 hover:text-slate-950 px-3 py-1.5"
@@ -47,8 +140,17 @@ export default function StudentDashboardPage() {
               href="/dashboard/profile"
               className="w-8 h-8 rounded-full bg-[#4b37df] text-white text-xs font-semibold flex items-center justify-center"
             >
-              AS
+              {initials}
             </Link>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              {signingOut ? 'Signing out…' : 'Sign out'}
+            </button>
           </div>
         </div>
       </header>
@@ -80,7 +182,7 @@ export default function StudentDashboardPage() {
               Student Workspace
             </span>
             <h1 className="text-2xl sm:text-3xl font-light text-slate-900">
-              Welcome back, Aarav Sharma
+              Welcome back, {session.user.name}
             </h1>
             <p className="text-xs sm:text-sm text-slate-500">
               Target: Master’s in Computer Science • Destinations: Japan 🇯🇵 & Australia 🇦🇺

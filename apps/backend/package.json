@@ -83,6 +83,7 @@
   "dependencies": {
     "@apollo/server": "^5.5.1",
     "@as-integrations/express5": "^1.1.2",
+    "@sass-project/auth": "0.0.1",
     "@sass-project/contracts": "0.0.1",
     "@sass-project/database": "0.0.1",
     "express": "^5.1.0",

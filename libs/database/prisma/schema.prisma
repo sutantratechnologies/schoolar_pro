@@ -19,3 +19,203 @@ model Todo {
 
   @@index([completed, createdAt])
 }
+
+enum UserRole {
+  STUDENT
+  ADMIN
+  SUPER_ADMIN
+  COLLEGE
+  CONSULTANCY
+}
+
+enum OrganizationType {
+  CONSULTANCY
+  UNIVERSITY
+  COLLEGE
+}
+
+enum OrganizationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum OrganizationApplicationStatus {
+  PENDING_REVIEW
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  CHANGES_REQUESTED
+}
+
+model User {
+  id                       String                    @id
+  name                     String
+  email                    String                    @unique
+  emailVerified            Boolean                   @default(false)
+  image                    String?
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  role                     UserRole                  @default(STUDENT)
+  sessions                 Session[]
+  accounts                 Account[]
+  organizationMemberships  OrganizationMembership[]
+  organizationApplications OrganizationApplication[] @relation("ApplicationApplicant")
+  reviewedApplications     OrganizationApplication[] @relation("ApplicationReviewer")
+  adminInvitations         AdminInvitation[]         @relation("AdminInviter")
+  auditLogs                AuditLog[]                @relation("AuditActor")
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+model RateLimit {
+  id          String @id
+  key         String @unique
+  count       Int
+  lastRequest BigInt
+
+  @@map("rateLimit")
+}
+
+model Organization {
+  id          String                   @id @default(cuid())
+  name        String                   @db.VarChar(255)
+  slug        String                   @unique @db.VarChar(120)
+  type        OrganizationType
+  email       String                   @db.VarChar(320)
+  phone       String?                  @db.VarChar(40)
+  website     String?                  @db.VarChar(2048)
+  country     String                   @db.VarChar(100)
+  address     String                   @db.Text
+  status      OrganizationStatus       @default(PENDING)
+  createdAt   DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime                 @updatedAt @db.Timestamptz(3)
+  memberships OrganizationMembership[]
+
+  @@index([type, status])
+  @@index([country])
+  @@map("organization")
+}
+
+model OrganizationMembership {
+  id             String       @id @default(cuid())
+  userId         String
+  organizationId String
+  isOwner        Boolean      @default(false)
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(3)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId, isActive])
+  @@index([userId, isActive])
+  @@map("organization_membership")
+}
+
+model OrganizationApplication {
+  id                         String                        @id @default(cuid())
+  applicantId                String
+  organizationName           String                        @db.VarChar(255)
+  organizationType           OrganizationType
+  businessRegistrationNumber String?                       @db.VarChar(100)
+  email                      String                        @db.VarChar(320)
+  phone                      String?                       @db.VarChar(40)
+  website                    String?                       @db.VarChar(2048)
+  country                    String                        @db.VarChar(100)
+  address                    String                        @db.Text
+  documents                  Json                          @default("[]") @db.JsonB
+  status                     OrganizationApplicationStatus @default(PENDING_REVIEW)
+  reviewedById               String?
+  reviewedAt                 DateTime?                     @db.Timestamptz(3)
+  reviewNotes                String?                       @db.Text
+  createdAt                  DateTime                      @default(now()) @db.Timestamptz(3)
+  updatedAt                  DateTime                      @updatedAt @db.Timestamptz(3)
+  applicant                  User                          @relation("ApplicationApplicant", fields: [applicantId], references: [id], onDelete: Restrict)
+  reviewedBy                 User?                         @relation("ApplicationReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([applicantId, status])
+  @@index([status, createdAt])
+  @@index([organizationType, status])
+  @@map("organization_application")
+}
+
+model AdminInvitation {
+  id          String    @id @default(cuid())
+  email       String    @db.VarChar(320)
+  invitedById String
+  tokenHash   String    @unique @db.Char(64)
+  expiresAt   DateTime  @db.Timestamptz(3)
+  acceptedAt  DateTime? @db.Timestamptz(3)
+  revokedAt   DateTime? @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  invitedBy   User      @relation("AdminInviter", fields: [invitedById], references: [id], onDelete: Restrict)
+
+  @@index([email, acceptedAt, revokedAt])
+  @@index([invitedById, createdAt])
+  @@map("admin_invitation")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String   @db.VarChar(120)
+  resource   String   @db.VarChar(120)
+  resourceId String?  @db.VarChar(255)
+  metadata   Json?    @db.JsonB
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  actor      User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId, createdAt])
+  @@index([resource, resourceId, createdAt])
+  @@map("audit_log")
+}

@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import {
   Mail,
   Lock,
@@ -15,39 +16,83 @@ import {
   GraduationCap,
   ShieldCheck,
 } from 'lucide-react';
+import { authClient, getAuthProviderConfig } from '@/lib/auth';
+import { getAppTarget, TARGET_POLICIES } from '@/lib/auth/targets';
 
 export default function SignupPage() {
+  const router = useRouter();
+  const canRegister = TARGET_POLICIES[getAppTarget()].canRegister;
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [googleEnabled, setGoogleEnabled] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (!canRegister) {
+      router.replace('/404');
+      return;
+    }
+
+    void getAuthProviderConfig()
+      .then(({ googleOAuthEnabled }) => setGoogleEnabled(googleOAuthEnabled))
+      .catch(() => setGoogleEnabled(false));
+  }, [canRegister, router]);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!agreed) {
-      alert('Please agree to the Terms of Service and Privacy Policy to proceed.');
+      setErrorMessage('Please agree to the Terms of Service and Privacy Policy to proceed.');
       return;
     }
 
     setIsLoading(true);
     setSuccessMessage('');
+    setErrorMessage('');
 
-    // Simulate account creation
-    setTimeout(() => {
+    try {
+      const { error } = await authClient.signUp.email({
+        name: name.trim(),
+        email,
+        password,
+        callbackURL: `${window.location.origin}/dashboard`,
+      });
+
+      if (error) {
+        setErrorMessage(error.message || 'Unable to create your account.');
+        return;
+      }
+
+      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+    } catch {
+      setErrorMessage('Unable to reach the authentication service. Try again.');
+    } finally {
       setIsLoading(false);
-      setSuccessMessage('Student account created successfully! Check your email to verify your address.');
-    }, 1000);
+    }
   };
 
-  const handleGoogleSignUp = () => {
+  const handleGoogleSignUp = async () => {
     setIsLoading(true);
-    setTimeout(() => {
+    setErrorMessage('');
+
+    try {
+      const { error } = await authClient.signIn.social({
+        provider: 'google',
+        callbackURL: `${window.location.origin}/dashboard`,
+      });
+
+      if (error) {
+        setErrorMessage(error.message || 'Unable to continue with Google.');
+        setIsLoading(false);
+      }
+    } catch {
+      setErrorMessage('Unable to reach the authentication service. Try again.');
       setIsLoading(false);
-      setSuccessMessage('Setting up your student account with Google...');
-    }, 800);
+    }
   };
 
   return (
@@ -90,8 +135,7 @@ export default function SignupPage() {
             </p>
           </div>
 
-          {/* Social Google Login Button */}
-          <div>
+          {googleEnabled && <div>
             <button
               type="button"
               onClick={handleGoogleSignUp}
@@ -118,17 +162,22 @@ export default function SignupPage() {
               </svg>
               <span>Sign up with Google</span>
             </button>
-          </div>
+          </div>}
 
-          <div className="relative flex items-center justify-center">
+          {googleEnabled && <div className="relative flex items-center justify-center">
             <div className="border-t border-slate-200/80 w-full" />
             <span className="bg-white px-3 text-[11px] font-normal uppercase tracking-wider text-slate-400 absolute">
               or register with email
             </span>
-          </div>
+          </div>}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
+            {errorMessage && (
+              <div role="alert" className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800">
+                {errorMessage}
+              </div>
+            )}
             {successMessage && (
               <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-2 text-xs text-emerald-800">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -146,6 +195,7 @@ export default function SignupPage() {
                 <input
                   type="text"
                   required
+                  maxLength={100}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Aarav Sharma"
@@ -164,6 +214,7 @@ export default function SignupPage() {
                 <input
                   type="email"
                   required
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
@@ -182,6 +233,9 @@ export default function SignupPage() {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
+                  minLength={12}
+                  maxLength={128}
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
@@ -200,7 +254,7 @@ export default function SignupPage() {
                   )}
                 </button>
               </div>
-              <p className="text-[11px] text-slate-400">Must be at least 8 characters</p>
+              <p className="text-[11px] text-slate-400">Must be at least 12 characters</p>
             </div>
 
             {/* Terms and Privacy Checkbox */}

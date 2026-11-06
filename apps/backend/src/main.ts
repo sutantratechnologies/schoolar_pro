@@ -7,13 +7,55 @@ import 'dotenv/config';
 
 import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@as-integrations/express5';
-import { todoTypeDefs } from '@sass-project/contracts';
+import { authTypeDefs, todoTypeDefs } from '@sass-project/contracts';
 import { prisma } from '@sass-project/database';
+import { verifyProxyHeaders } from '@sass-project/auth/proxy-signature';
 import express from 'express';
 import * as path from 'path';
+import { toNodeHandler } from 'better-auth/node';
+import { auth, authCapabilities } from '@sass-project/auth/server';
+import { createApiContext } from './auth.context.js';
+import { authResolvers } from './auth.resolvers.js';
 import { todoResolvers } from './todo.resolvers.js';
 
 const app = express();
+
+function requireSignedFrontendProxy(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) {
+  try {
+    const pathname = new URL(req.originalUrl, 'http://localhost').pathname;
+    const requestHeaders = new Headers();
+    for (const [name, value] of Object.entries(req.headers)) {
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          requestHeaders.append(name, item);
+        }
+      } else if (value) {
+        requestHeaders.set(name, value);
+      }
+    }
+
+    const target = verifyProxyHeaders(
+      requestHeaders,
+      req.method,
+      pathname
+    );
+
+    if (!target) {
+      res.status(401).json({ message: 'Unauthorized request.' });
+      return;
+    }
+
+    req.headers['x-bidy-app-target'] = target;
+    next();
+  } catch (error) {
+    console.error('Frontend proxy authentication is not configured.', error);
+    res.status(503).json({ message: 'Authentication service unavailable.' });
+  }
+}
 
 const assetsPath =
   process.env.NODE_ENV === 'development'
@@ -63,10 +105,18 @@ app.use((req, res, next) => {
   if (origin) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
 
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'content-type');
+  res.setHeader(
+    'Access-Control-Allow-Methods',
+    'GET, POST, PUT, PATCH, DELETE, OPTIONS'
+  );
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    req.get('access-control-request-headers') ??
+      'content-type, authorization, x-csrf-token'
+  );
 
   if (req.method === 'OPTIONS') {
     res.sendStatus(204);
@@ -80,20 +130,28 @@ app.get('/api', (req, res) => {
   res.send({ message: 'Welcome to the todo API!' });
 });
 
+app.use('/api/auth', requireSignedFrontendProxy);
+app.get('/api/auth/config', (_req, res) => {
+  res.json({ googleOAuthEnabled: authCapabilities.googleOAuth });
+});
+
+app.all('/api/auth/*splat', toNodeHandler(auth));
+
 const graphqlServer = new ApolloServer({
-  typeDefs: todoTypeDefs,
-  resolvers: todoResolvers,
+  typeDefs: [todoTypeDefs, authTypeDefs],
+  resolvers: [todoResolvers, authResolvers],
   introspection: process.env.NODE_ENV !== 'production',
 });
 
 async function startServer() {
   await graphqlServer.start();
 
+  app.use('/graphql', requireSignedFrontendProxy);
   app.use(
     '/graphql',
     express.json(),
     expressMiddleware(graphqlServer, {
-      context: async () => ({ prisma }),
+      context: async ({ req, res }) => createApiContext(req, res, prisma),
     })
   );
 
