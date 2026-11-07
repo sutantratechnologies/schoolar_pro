@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { error: responseError } = await authClient.signIn.email({
           email,
           password,
-          callbackURL: window.location.origin,
+          callbackURL: `${window.location.origin}/dashboard`,
         });
         if (responseError) {
           const message =

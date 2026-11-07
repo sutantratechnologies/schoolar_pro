@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import {
   Bookmark,
   ExternalLink,
@@ -139,65 +138,8 @@ export default function SavedScholarshipsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200/80 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="inline-block group focus:outline-hidden" aria-label="BidyaGo Home">
-              <Image
-                src="/bidyago_logo.png"
-                alt="BidyaGo"
-                width={130}
-                height={34}
-                className="h-8 w-auto object-contain"
-                priority
-              />
-            </Link>
-            <span className="text-slate-300">|</span>
-            <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-full">
-              Student Workspace
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/scholarships"
-              className="text-xs font-medium text-slate-600 hover:text-slate-950 px-3 py-1.5"
-            >
-              Browse All Grants
-            </Link>
-            <Link
-              href="/dashboard/profile"
-              className="w-8 h-8 rounded-full bg-[#4b37df] text-white text-xs font-semibold flex items-center justify-center"
-            >
-              AS
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      {/* Subnav */}
-      <div className="bg-white border-b border-slate-200/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-6 text-xs font-medium text-slate-500 overflow-x-auto">
-          <Link href="/dashboard" className="py-3 border-b-2 border-transparent hover:text-slate-900">
-            Overview
-          </Link>
-          <Link href="/dashboard/profile" className="py-3 border-b-2 border-transparent hover:text-slate-900">
-            Academic Profile
-          </Link>
-          <Link href="/dashboard/saved" className="py-3 border-b-2 border-slate-900 text-slate-900">
-            Saved Grants ({savedList.length})
-          </Link>
-          <Link href="/dashboard/applications" className="py-3 border-b-2 border-transparent hover:text-slate-900">
-            Application Tracker (2)
-          </Link>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        {/* Title & Filter Bar */}
+    <div className="w-full space-y-6">
+      {/* Title & Filter Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-light text-slate-900">Saved Scholarships & Grants</h1>
@@ -332,7 +274,6 @@ export default function SavedScholarshipsPage() {
             ))}
           </div>
         )}
-      </main>
     </div>
   );
 }

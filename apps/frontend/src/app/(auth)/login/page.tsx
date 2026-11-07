@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   ShieldCheck,
   Globe2,
+  RefreshCw,
 } from 'lucide-react';
 import {
   authClient,
@@ -39,6 +40,8 @@ export default function LoginPage() {
   const [googleEnabled, setGoogleEnabled] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  const [isResending, setIsResending] = useState(false);
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -57,16 +60,32 @@ export default function LoginPage() {
     setIsLoading(true);
     setSuccessMessage('');
     setErrorMessage('');
+    setUnverifiedEmail(null);
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const redirectParam = searchParams.get('callbackURL') || searchParams.get('redirect') || '/dashboard';
+    const destinationUrl = redirectParam.startsWith('http')
+      ? redirectParam
+      : `${window.location.origin}${redirectParam.startsWith('/') ? redirectParam : `/${redirectParam}`}`;
 
     try {
       const { error } = await authClient.signIn.email({
         email,
         password,
         rememberMe,
-        callbackURL: window.location.origin,
+        callbackURL: destinationUrl,
       });
 
       if (error) {
+        if (
+          error.code === 'EMAIL_NOT_VERIFIED' ||
+          error.message?.toLowerCase().includes('not verified')
+        ) {
+          setUnverifiedEmail(email.trim());
+          setErrorMessage('');
+          return;
+        }
+
         setErrorMessage(
           error.status === 401
             ? 'No account is registered with these credentials.'
@@ -78,16 +97,39 @@ export default function LoginPage() {
       const session = await fetchCurrentSession();
       const role = session?.user.role;
       const home = isUserRole(role) ? getHomePath(target, role) : undefined;
-      if (!home) {
-        setErrorMessage('No account is registered with these credentials.');
-        return;
-      }
+      const targetDestination = redirectParam.startsWith('/')
+        ? redirectParam
+        : (home ?? '/dashboard');
 
-      router.replace(home);
+      router.replace(targetDestination);
     } catch {
       setErrorMessage('Unable to reach the authentication service. Try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!unverifiedEmail) return;
+    setIsResending(true);
+    setErrorMessage('');
+
+    try {
+      const { error } = await authClient.emailOtp.sendVerificationOtp({
+        email: unverifiedEmail,
+        type: 'email-verification',
+      });
+
+      if (error) {
+        setErrorMessage(error.message || 'Unable to send a verification email.');
+        return;
+      }
+
+      router.push(`/verify-email?email=${encodeURIComponent(unverifiedEmail)}&resent=1`);
+    } catch {
+      setErrorMessage('Unable to reach the authentication service. Try again.');
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -96,9 +138,15 @@ export default function LoginPage() {
     setErrorMessage('');
 
     try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const redirectParam = searchParams.get('callbackURL') || searchParams.get('redirect') || '/dashboard';
+      const destinationUrl = redirectParam.startsWith('http')
+        ? redirectParam
+        : `${window.location.origin}${redirectParam.startsWith('/') ? redirectParam : `/${redirectParam}`}`;
+
       const { error } = await authClient.signIn.social({
         provider: 'google',
-        callbackURL: window.location.origin,
+        callbackURL: destinationUrl,
       });
 
       if (error) {
@@ -207,11 +255,41 @@ export default function LoginPage() {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
-            {errorMessage && (
+            {unverifiedEmail ? (
+              <div role="alert" className="p-4 bg-amber-50 border border-amber-200/80 rounded-2xl space-y-3 text-xs text-amber-900">
+                <div className="flex items-start gap-2.5">
+                  <Mail className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <p className="font-medium text-amber-950">Email verification required</p>
+                    <p className="text-amber-800 leading-relaxed">
+                      Your account for <span className="font-semibold text-slate-900">{unverifiedEmail}</span> needs to be verified before you can sign in.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <Link
+                    href={`/verify-email?email=${encodeURIComponent(unverifiedEmail)}`}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#4b37df] hover:bg-[#3c2cc5] text-white font-medium transition-colors cursor-pointer"
+                  >
+                    <span>Enter Code</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                  <button
+                    type="button"
+                    disabled={isResending}
+                    onClick={handleResendVerification}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-amber-300 bg-white hover:bg-amber-100/60 text-amber-900 font-medium transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isResending ? 'animate-spin' : ''}`} />
+                    <span>{isResending ? 'Sending...' : 'Resend Code'}</span>
+                  </button>
+                </div>
+              </div>
+            ) : errorMessage ? (
               <div role="alert" className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800">
                 {errorMessage}
               </div>
-            )}
+            ) : null}
             {successMessage && (
               <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-2 text-xs text-emerald-800">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />

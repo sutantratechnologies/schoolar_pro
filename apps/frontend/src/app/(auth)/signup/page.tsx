@@ -45,6 +45,18 @@ export default function SignupPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!name.trim()) {
+      setErrorMessage('Please enter your full name.');
+      return;
+    }
+    if (!email.trim()) {
+      setErrorMessage('Please enter your email address.');
+      return;
+    }
+    if (password.length < 12) {
+      setErrorMessage(`Password must be at least 12 characters (currently ${password.length}).`);
+      return;
+    }
     if (!agreed) {
       setErrorMessage('Please agree to the Terms of Service and Privacy Policy to proceed.');
       return;
@@ -57,17 +69,37 @@ export default function SignupPage() {
     try {
       const { error } = await authClient.signUp.email({
         name: name.trim(),
-        email,
+        email: email.trim(),
         password,
         callbackURL: `${window.location.origin}/dashboard`,
       });
 
       if (error) {
-        setErrorMessage(error.message || 'Unable to create your account.');
+        const errAny = error as { code?: string; message?: string; status?: number };
+        if (
+          errAny.code === 'PASSWORD_TOO_SHORT' ||
+          errAny.message?.toLowerCase().includes('password')
+        ) {
+          setErrorMessage('Password must be at least 12 characters long.');
+        } else if (
+          errAny.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL' ||
+          errAny.code === 'USER_ALREADY_EXISTS' ||
+          errAny.status === 422 ||
+          errAny.message?.toLowerCase().includes('already exists')
+        ) {
+          setErrorMessage('An account with this email already exists. Please sign in instead.');
+        } else if (
+          errAny.status === 429 ||
+          errAny.message?.toLowerCase().includes('too many')
+        ) {
+          setErrorMessage('Too many attempts. Please wait a moment and try again.');
+        } else {
+          setErrorMessage(errAny.message || 'Unable to create your account. Please try again.');
+        }
         return;
       }
 
-      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+      router.push(`/verify-email?email=${encodeURIComponent(email.trim())}`);
     } catch {
       setErrorMessage('Unable to reach the authentication service. Try again.');
     } finally {
@@ -174,8 +206,13 @@ export default function SignupPage() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {errorMessage && (
-              <div role="alert" className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800">
-                {errorMessage}
+              <div role="alert" className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 flex items-center justify-between gap-2">
+                <span>{errorMessage}</span>
+                {errorMessage.includes('sign in') && (
+                  <Link href="/login" className="font-semibold underline text-[#4b37df] hover:text-[#3f2cd6] shrink-0">
+                    Sign In →
+                  </Link>
+                )}
               </div>
             )}
             {successMessage && (
@@ -254,7 +291,19 @@ export default function SignupPage() {
                   )}
                 </button>
               </div>
-              <p className="text-[11px] text-slate-400">Must be at least 12 characters</p>
+              <div className="flex items-center justify-between text-[11px] pt-0.5">
+                {password.length === 0 ? (
+                  <span className="text-slate-400">Must be at least 12 characters</span>
+                ) : password.length < 12 ? (
+                  <span className="text-amber-600 font-medium">
+                    Must be at least 12 characters ({password.length}/12 entered)
+                  </span>
+                ) : (
+                  <span className="text-emerald-600 font-medium flex items-center gap-1">
+                    ✓ Meets length requirement ({password.length} characters)
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Terms and Privacy Checkbox */}

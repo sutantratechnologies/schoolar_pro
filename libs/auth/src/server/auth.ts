@@ -484,15 +484,15 @@ export const auth = betterAuth({
     updateAge: 60 * 60 * 24,
   },
   rateLimit: {
-    enabled: true,
+    enabled: process.env.NODE_ENV === 'production',
     window: 60,
     max: 100,
     storage: 'database',
     customRules: {
-      '/sign-in/email': { window: 60, max: 5 },
-      '/sign-up/email': { window: 60, max: 5 },
-      '/forget-password': { window: 60, max: 3 },
-      '/send-verification-email': { window: 60, max: 3 },
+      '/sign-in/email': { window: 60, max: 10 },
+      '/sign-up/email': { window: 60, max: 10 },
+      '/forget-password': { window: 60, max: 5 },
+      '/send-verification-email': { window: 60, max: 5 },
     },
   },
   advanced: {
