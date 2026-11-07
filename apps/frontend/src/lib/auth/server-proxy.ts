@@ -9,41 +9,48 @@ function renameCookiePrefix(
   toBackend: boolean
 ): string {
   const targetPrefix = `bg_${target}.`;
-  return cookieHeader
-    .split(';')
-    .map((part) => {
-      const trimmed = part.trim();
-      const separator = trimmed.indexOf('=');
-      if (separator < 0) {
-        return trimmed;
-      }
+  const resultCookies = new Map<string, string>();
 
-      const name = trimmed.slice(0, separator);
-      const value = trimmed.slice(separator + 1);
-      const securePrefix = name.startsWith('__Secure-')
-        ? '__Secure-'
-        : name.startsWith('__Host-')
-          ? '__Host-'
-          : '';
-      const plainName = name.slice(securePrefix.length);
-      if (toBackend) {
-        if (plainName.startsWith(targetPrefix)) {
-          return `${securePrefix}better-auth.${plainName.slice(targetPrefix.length)}=${value}`;
-        }
+  for (const part of cookieHeader.split(';')) {
+    const trimmed = part.trim();
+    const separator = trimmed.indexOf('=');
+    if (separator < 0) continue;
 
-        if (
-          plainName.startsWith('better-auth.') ||
-          /^bg_(main|portal|workspace)\./.test(plainName)
-        ) {
-          return '';
+    const name = trimmed.slice(0, separator);
+    const value = trimmed.slice(separator + 1);
+    const securePrefix = name.startsWith('__Secure-')
+      ? '__Secure-'
+      : name.startsWith('__Host-')
+        ? '__Host-'
+        : '';
+    const plainName = name.slice(securePrefix.length);
+
+    if (toBackend) {
+      if (plainName.startsWith(targetPrefix)) {
+        const canonicalName = `${securePrefix}better-auth.${plainName.slice(targetPrefix.length)}`;
+        resultCookies.set(canonicalName, value);
+      } else if (target === 'main' && plainName.startsWith('better-auth.')) {
+        if (!resultCookies.has(name)) {
+          resultCookies.set(name, value);
         }
+      } else if (
+        !plainName.startsWith('better-auth.') &&
+        !/^bg_(main|portal|workspace)\./.test(plainName)
+      ) {
+        resultCookies.set(name, value);
       }
-      if (!toBackend && plainName.startsWith('better-auth.')) {
-        return `${securePrefix}${targetPrefix}${plainName.slice('better-auth.'.length)}=${value}`;
+    } else {
+      if (plainName.startsWith('better-auth.')) {
+        const prefixedName = `${securePrefix}${targetPrefix}${plainName.slice('better-auth.'.length)}`;
+        resultCookies.set(prefixedName, value);
+      } else {
+        resultCookies.set(name, value);
       }
-      return trimmed;
-    })
-    .filter(Boolean)
+    }
+  }
+
+  return Array.from(resultCookies.entries())
+    .map(([k, v]) => `${k}=${v}`)
     .join('; ');
 }
 
@@ -105,11 +112,18 @@ export async function proxyToBackend(
   const headers = new Headers(request.headers);
   headers.delete('host');
   headers.delete('content-length');
-  headers.set('x-forwarded-host', incomingURL.host);
-  headers.set(
-    'x-forwarded-proto',
-    incomingURL.protocol.slice(0, -1)
-  );
+
+  const incomingHost =
+    request.headers.get('x-forwarded-host') ||
+    (incomingURL.host && incomingURL.host !== 'internal' ? incomingURL.host : 'localhost:3000');
+  headers.set('x-forwarded-host', incomingHost);
+
+  const incomingProto =
+    request.headers.get('x-forwarded-proto') ||
+    (incomingURL.protocol && !incomingURL.protocol.startsWith('http')
+      ? 'http'
+      : incomingURL.protocol.replace(/:$/, '') || 'http');
+  headers.set('x-forwarded-proto', incomingProto);
 
   const cookie = headers.get('cookie');
   if (cookie) {
@@ -167,6 +181,12 @@ export async function proxyToBackend(
 
   for (const cookieHeader of upstream.headers.getSetCookie()) {
     responseHeaders.append('set-cookie', rewriteSetCookie(cookieHeader, target));
+    if (target === 'main' && cookieHeader.includes('better-auth.')) {
+      responseHeaders.append(
+        'set-cookie',
+        cookieHeader.replace(/;\s*Domain=[^;]*/gi, '')
+      );
+    }
   }
 
   return new Response(upstream.body, {

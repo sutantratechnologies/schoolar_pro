@@ -26,6 +26,12 @@
     },
     {
       "path": "./libs/auth"
+    },
+    {
+      "path": "./apps/workspace"
+    },
+    {
+      "path": "./apps/admin"
     }
   ]
 }

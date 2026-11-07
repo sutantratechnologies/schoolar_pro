@@ -18,8 +18,8 @@ import {
 } from 'lucide-react';
 import {
   authClient,
-  fetchCurrentSession,
   getAuthProviderConfig,
+  resolveActiveSession,
 } from '@/lib/auth';
 import {
   getAppTarget,
@@ -48,9 +48,20 @@ export default function LoginPage() {
     if (!sessionPending && sessionData?.user) {
       const searchParams = new URLSearchParams(window.location.search);
       const redirectParam = searchParams.get('callbackURL') || searchParams.get('next') || searchParams.get('redirect') || '/dashboard';
-      router.replace(redirectParam);
+      window.location.href = redirectParam;
       return;
     }
+
+    // Fast active session fallback check
+    void resolveActiveSession()
+      .then((s) => {
+        if (s?.user) {
+          const searchParams = new URLSearchParams(window.location.search);
+          const redirectParam = searchParams.get('callbackURL') || searchParams.get('next') || searchParams.get('redirect') || '/dashboard';
+          window.location.href = redirectParam;
+        }
+      })
+      .catch(() => {});
 
     const searchParams = new URLSearchParams(window.location.search);
     if (searchParams.get('verified') === '1') {
@@ -102,14 +113,14 @@ export default function LoginPage() {
         return;
       }
 
-      const session = await fetchCurrentSession();
+      const session = await resolveActiveSession();
       const role = session?.user.role;
       const home = isUserRole(role) ? getHomePath(target, role) : undefined;
       const targetDestination = redirectParam.startsWith('/')
         ? redirectParam
         : (home ?? '/dashboard');
 
-      router.replace(targetDestination);
+      window.location.href = targetDestination;
     } catch {
       setErrorMessage('Unable to reach the authentication service. Try again.');
     } finally {

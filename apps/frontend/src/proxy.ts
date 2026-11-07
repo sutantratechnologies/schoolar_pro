@@ -29,15 +29,21 @@ async function getSessionRole(
   const prefix = `bg_${target}.`;
   const hasSessionCookie = request.cookies
     .getAll()
-    .some((cookie) => cookie.name.endsWith(`${prefix}session_token`));
+    .some(
+      (cookie) =>
+        cookie.name.endsWith(`${prefix}session_token`) ||
+        (target === 'main' && cookie.name.endsWith('better-auth.session_token'))
+    );
 
   if (!hasSessionCookie) {
     return { role: null, unavailable: false };
   }
 
   try {
+    const cookieHeader =
+      request.cookies.toString() || (request.headers.get('cookie') ?? '');
     const response = await fetch(new URL('/api/auth/get-session', request.url), {
-      headers: { cookie: request.headers.get('cookie') ?? '' },
+      headers: { cookie: cookieHeader },
       cache: 'no-store',
     });
     if (!response.ok) {

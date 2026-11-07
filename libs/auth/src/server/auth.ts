@@ -195,6 +195,20 @@ function loadAuthEnvironment() {
   }
 
   const trustedOrigins = new Set<string>([baseURL]);
+
+  if (process.env.NODE_ENV !== 'production') {
+    trustedOrigins.add('http://localhost:3000');
+    trustedOrigins.add('http://127.0.0.1:3000');
+    trustedOrigins.add('http://localhost:3001');
+    trustedOrigins.add('http://127.0.0.1:3001');
+    trustedOrigins.add('http://localhost:3002');
+    trustedOrigins.add('http://127.0.0.1:3002');
+    trustedOrigins.add('http://localhost:3333');
+    trustedOrigins.add('http://127.0.0.1:3333');
+    trustedOrigins.add('http://internal');
+    trustedOrigins.add('https://internal');
+  }
+
   const configuredOrigins = [
     process.env.APP_URL,
     process.env.STUDENT_APP_URL,

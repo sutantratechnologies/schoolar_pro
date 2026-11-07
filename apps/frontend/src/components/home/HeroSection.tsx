@@ -1,10 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, LayoutDashboard } from 'lucide-react';
-import { authClient } from '@/lib/auth';
+import {
+  authClient,
+  resolveActiveSession,
+} from '@/lib/auth';
 
 interface HeroSectionProps {
   onSearch?: (query: string, degree: string) => void;
@@ -12,7 +15,50 @@ interface HeroSectionProps {
 
 export default function HeroSection({ onSearch }: HeroSectionProps) {
   const { data: session } = authClient.useSession();
-  const user = session?.user;
+  const [sessionUser, setSessionUser] = useState<{
+    id: string;
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+  } | null>(session?.user ? { ...session.user } : null);
+
+  const user = sessionUser ?? (session?.user ? { ...session.user } : null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const syncSession = async () => {
+      if (session?.user) {
+        if (isMounted) setSessionUser({ ...session.user });
+        return;
+      }
+
+      try {
+        const resolved = await resolveActiveSession();
+        if (isMounted) {
+          if (resolved?.user) {
+            setSessionUser({ ...resolved.user });
+          } else {
+            setSessionUser(null);
+          }
+        }
+      } catch {
+        if (isMounted) setSessionUser(null);
+      }
+    };
+
+    void syncSession();
+
+    const handleFocus = () => {
+      void syncSession();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [session]);
   const scrollToScholarships = () => {
     if (onSearch) {
       onSearch('', 'all');

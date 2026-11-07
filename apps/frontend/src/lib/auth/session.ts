@@ -9,8 +9,13 @@ import { forbidden, redirect } from 'next/navigation';
 function isBetterAuthSession(
   value: unknown
 ): value is {
-  session: { id: string; expiresAt: string };
-  user: CurrentSession['user'];
+  session: { id: string | number; expiresAt: unknown };
+  user: {
+    id: string;
+    email: string;
+    role: CurrentSession['user']['role'];
+    [key: string]: unknown;
+  };
 } {
   if (
     typeof value !== 'object' ||
@@ -21,62 +26,89 @@ function isBetterAuthSession(
     return false;
   }
 
-  const session = value.session;
-  const user = value.user;
+  const session = (value as Record<string, unknown>).session;
+  const user = (value as Record<string, unknown>).user;
+  if (!session || typeof session !== 'object' || !user || typeof user !== 'object') {
+    return false;
+  }
+
+  const userRec = user as Record<string, unknown>;
   return (
-    typeof session === 'object' &&
-    session !== null &&
-    'id' in session &&
-    typeof session.id === 'string' &&
-    'expiresAt' in session &&
-    typeof session.expiresAt === 'string' &&
-    typeof user === 'object' &&
-    user !== null &&
-    'id' in user &&
-    typeof user.id === 'string' &&
-    'name' in user &&
-    typeof user.name === 'string' &&
-    'email' in user &&
-    typeof user.email === 'string' &&
-    'emailVerified' in user &&
-    typeof user.emailVerified === 'boolean' &&
-    'image' in user &&
-    (typeof user.image === 'string' || user.image === null) &&
-    'role' in user &&
-    isUserRole(user.role) &&
-    'createdAt' in user &&
-    typeof user.createdAt === 'string' &&
-    'updatedAt' in user &&
-    typeof user.updatedAt === 'string'
+    typeof userRec.id === 'string' &&
+    typeof userRec.email === 'string' &&
+    isUserRole(userRec.role)
   );
 }
 
 export async function getServerSession(): Promise<CurrentSession | null> {
-  const requestHeaders = await headers();
-  const response = await proxyToBackend(
-    new Request('http://internal/api/auth/get-session', {
-      headers: { cookie: requestHeaders.get('cookie') ?? '' },
-    }),
-    getAppTarget(),
-    '/api/auth/get-session'
-  );
+  try {
+    const requestHeaders = await headers();
+    const cookie = requestHeaders.get('cookie') ?? '';
+    if (!cookie || (!cookie.includes('session_token') && !cookie.includes('bg_'))) {
+      return null;
+    }
 
-  if (!response.ok) {
-    throw new Error('Unable to verify the authentication session.');
-  }
+    const host =
+      requestHeaders.get('x-forwarded-host') ||
+      requestHeaders.get('host') ||
+      'localhost:3000';
+    const proto =
+      requestHeaders.get('x-forwarded-proto') || 'http';
 
-  const data: unknown = await response.json();
-  if (data === null) {
+    const response = await proxyToBackend(
+      new Request(`${proto}://${host}/api/auth/get-session`, {
+        headers: {
+          cookie,
+          'x-forwarded-host': host,
+          'x-forwarded-proto': proto,
+        },
+      }),
+      getAppTarget(),
+      '/api/auth/get-session'
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data: unknown = await response.json();
+    if (!data || typeof data !== 'object') {
+      return null;
+    }
+    if (!isBetterAuthSession(data)) {
+      return null;
+    }
+
+    const sessionObj = data.session as Record<string, unknown>;
+    const userObj = data.user as Record<string, unknown>;
+
+    return {
+      id: String(sessionObj.id),
+      expiresAt:
+        typeof sessionObj.expiresAt === 'string'
+          ? sessionObj.expiresAt
+          : new Date(sessionObj.expiresAt as string | number | Date).toISOString(),
+      user: {
+        id: String(userObj.id),
+        name: String(userObj.name || userObj.email || 'Student'),
+        email: String(userObj.email),
+        emailVerified: Boolean(userObj.emailVerified),
+        image: typeof userObj.image === 'string' ? userObj.image : null,
+        role: userObj.role as CurrentSession['user']['role'],
+        createdAt:
+          typeof userObj.createdAt === 'string'
+            ? userObj.createdAt
+            : new Date(userObj.createdAt as string | number | Date).toISOString(),
+        updatedAt:
+          typeof userObj.updatedAt === 'string'
+            ? userObj.updatedAt
+            : new Date(userObj.updatedAt as string | number | Date).toISOString(),
+      },
+    };
+  } catch (error) {
+    console.error('Failed to resolve server session:', error);
     return null;
   }
-  if (!isBetterAuthSession(data)) {
-    throw new Error('The authentication service returned an invalid session.');
-  }
-  return {
-    id: data.session.id,
-    expiresAt: data.session.expiresAt,
-    user: data.user,
-  };
 }
 
 export async function requireRole(

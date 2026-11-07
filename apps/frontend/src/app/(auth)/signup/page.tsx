@@ -16,7 +16,11 @@ import {
   GraduationCap,
   ShieldCheck,
 } from 'lucide-react';
-import { authClient, getAuthProviderConfig } from '@/lib/auth';
+import {
+  authClient,
+  getAuthProviderConfig,
+  resolveActiveSession,
+} from '@/lib/auth';
 import { getAppTarget, TARGET_POLICIES } from '@/lib/auth/targets';
 
 export default function SignupPage() {
@@ -35,9 +39,18 @@ export default function SignupPage() {
 
   useEffect(() => {
     if (!sessionPending && sessionData?.user) {
-      router.replace('/dashboard');
+      window.location.href = '/dashboard';
       return;
     }
+
+    // Fast active session fallback check
+    void resolveActiveSession()
+      .then((s) => {
+        if (s?.user) {
+          window.location.href = '/dashboard';
+        }
+      })
+      .catch(() => {});
 
     if (!canRegister) {
       router.replace('/404');
