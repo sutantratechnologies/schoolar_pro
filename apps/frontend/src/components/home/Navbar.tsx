@@ -11,9 +11,13 @@ import {
   GraduationCap,
   Briefcase,
   ArrowUpRight,
+  LayoutDashboard,
 } from 'lucide-react';
+import { authClient } from '@/lib/auth';
 
 export default function Navbar() {
+  const { data: session } = authClient.useSession();
+  const user = session?.user;
   const [visible, setVisible] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [orgDropdownOpen, setOrgDropdownOpen] = useState(false);
@@ -184,19 +188,46 @@ export default function Navbar() {
 
           {/* Right Action Buttons */}
           <div className="hidden sm:flex items-center gap-3">
-            <Link
-              href="/login"
-              className="px-3.5 py-2 text-xs sm:text-sm font-normal text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/signup"
-              className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-slate-900 hover:bg-[#4b37df] text-white text-xs sm:text-sm font-normal transition-colors cursor-pointer"
-            >
-              <span>Get Started</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            {user ? (
+              <div className="flex items-center gap-2.5">
+                <Link
+                  href="/dashboard"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900 hover:bg-[#4b37df] text-white text-xs sm:text-sm font-medium transition-all shadow-xs"
+                >
+                  <LayoutDashboard className="w-3.5 h-3.5" />
+                  <span>Student Portal</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+                <Link
+                  href="/dashboard/profile"
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-full border border-slate-200 hover:bg-slate-50 transition-colors"
+                  title={user.name || user.email}
+                >
+                  <div className="w-6 h-6 rounded-full bg-purple-100 text-[#4b37df] flex items-center justify-center text-[10px] font-bold">
+                    {user.name ? user.name.slice(0, 2).toUpperCase() : 'ST'}
+                  </div>
+                  <span className="text-xs font-medium text-slate-700 max-w-[100px] truncate">
+                    {user.name?.split(' ')[0] || 'Profile'}
+                  </span>
+                </Link>
+              </div>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="px-3.5 py-2 text-xs sm:text-sm font-normal text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/signup"
+                  className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-slate-900 hover:bg-[#4b37df] text-white text-xs sm:text-sm font-normal transition-colors cursor-pointer"
+                >
+                  <span>Get Started</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Toggle */}
@@ -314,20 +345,52 @@ export default function Navbar() {
           </Link>
 
           <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
-            <Link
-              href="/login"
-              onClick={() => setMobileMenuOpen(false)}
-              className="w-full py-2.5 text-center text-xs sm:text-sm font-normal text-slate-700 bg-slate-50 border border-slate-200 rounded-full cursor-pointer block"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/signup"
-              onClick={() => setMobileMenuOpen(false)}
-              className="w-full py-2.5 text-center text-xs sm:text-sm font-normal text-white bg-slate-900 rounded-full text-center block"
-            >
-              Get Started
-            </Link>
+            {user ? (
+              <>
+                <div className="px-3.5 py-2.5 flex items-center gap-3 bg-purple-50/60 rounded-2xl border border-purple-100">
+                  <div className="w-9 h-9 rounded-full bg-[#4b37df] text-white flex items-center justify-center text-xs font-bold">
+                    {user.name ? user.name.slice(0, 2).toUpperCase() : 'ST'}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-slate-900 truncate">
+                      {user.name || 'Student Account'}
+                    </p>
+                    <p className="text-[11px] text-slate-500 truncate">{user.email}</p>
+                  </div>
+                </div>
+                <Link
+                  href="/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full py-2.5 text-center text-xs sm:text-sm font-medium text-white bg-slate-900 hover:bg-[#4b37df] rounded-full block transition-colors shadow-xs"
+                >
+                  Open Student Portal →
+                </Link>
+                <Link
+                  href="/dashboard/profile"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full py-2 text-center text-xs font-medium text-slate-600 hover:text-slate-900 block"
+                >
+                  My Profile & Settings
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full py-2.5 text-center text-xs sm:text-sm font-normal text-slate-700 bg-slate-50 border border-slate-200 rounded-full cursor-pointer block"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/signup"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full py-2.5 text-center text-xs sm:text-sm font-normal text-white bg-slate-900 rounded-full text-center block"
+                >
+                  Get Started
+                </Link>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -42,8 +42,16 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
   const [isResending, setIsResending] = useState(false);
+  const { data: sessionData, isPending: sessionPending } = authClient.useSession();
 
   useEffect(() => {
+    if (!sessionPending && sessionData?.user) {
+      const searchParams = new URLSearchParams(window.location.search);
+      const redirectParam = searchParams.get('callbackURL') || searchParams.get('next') || searchParams.get('redirect') || '/dashboard';
+      router.replace(redirectParam);
+      return;
+    }
+
     const searchParams = new URLSearchParams(window.location.search);
     if (searchParams.get('verified') === '1') {
       setEmail(searchParams.get('email') ?? '');
@@ -53,7 +61,7 @@ export default function LoginPage() {
     void getAuthProviderConfig()
       .then(({ googleOAuthEnabled }) => setGoogleEnabled(googleOAuthEnabled))
       .catch(() => setGoogleEnabled(false));
-  }, []);
+  }, [router, sessionData, sessionPending]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

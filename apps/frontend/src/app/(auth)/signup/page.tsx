@@ -31,8 +31,14 @@ export default function SignupPage() {
   const [googleEnabled, setGoogleEnabled] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const { data: sessionData, isPending: sessionPending } = authClient.useSession();
 
   useEffect(() => {
+    if (!sessionPending && sessionData?.user) {
+      router.replace('/dashboard');
+      return;
+    }
+
     if (!canRegister) {
       router.replace('/404');
       return;
@@ -41,7 +47,7 @@ export default function SignupPage() {
     void getAuthProviderConfig()
       .then(({ googleOAuthEnabled }) => setGoogleEnabled(googleOAuthEnabled))
       .catch(() => setGoogleEnabled(false));
-  }, [canRegister, router]);
+  }, [canRegister, router, sessionData, sessionPending]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -53,8 +59,8 @@ export default function SignupPage() {
       setErrorMessage('Please enter your email address.');
       return;
     }
-    if (password.length < 12) {
-      setErrorMessage(`Password must be at least 12 characters (currently ${password.length}).`);
+    if (password.length < 8) {
+      setErrorMessage(`Password must be at least 8 characters (currently ${password.length}).`);
       return;
     }
     if (!agreed) {
@@ -80,7 +86,7 @@ export default function SignupPage() {
           errAny.code === 'PASSWORD_TOO_SHORT' ||
           errAny.message?.toLowerCase().includes('password')
         ) {
-          setErrorMessage('Password must be at least 12 characters long.');
+          setErrorMessage('Password must be at least 8 characters long.');
         } else if (
           errAny.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL' ||
           errAny.code === 'USER_ALREADY_EXISTS' ||
@@ -270,7 +276,7 @@ export default function SignupPage() {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
-                  minLength={12}
+                  minLength={8}
                   maxLength={128}
                   autoComplete="new-password"
                   value={password}
@@ -293,10 +299,10 @@ export default function SignupPage() {
               </div>
               <div className="flex items-center justify-between text-[11px] pt-0.5">
                 {password.length === 0 ? (
-                  <span className="text-slate-400">Must be at least 12 characters</span>
-                ) : password.length < 12 ? (
+                  <span className="text-slate-400">Must be at least 8 characters</span>
+                ) : password.length < 8 ? (
                   <span className="text-amber-600 font-medium">
-                    Must be at least 12 characters ({password.length}/12 entered)
+                    Must be at least 8 characters ({password.length}/8 entered)
                   </span>
                 ) : (
                   <span className="text-emerald-600 font-medium flex items-center gap-1">

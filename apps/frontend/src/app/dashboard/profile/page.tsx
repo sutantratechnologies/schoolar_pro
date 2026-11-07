@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
 import {
   User,
   GraduationCap,
@@ -12,11 +11,9 @@ import {
   FileText,
   Save,
   CheckCircle2,
-  Sparkles,
   ShieldCheck,
   Plus,
   Trash2,
-  ArrowRight,
 } from 'lucide-react';
 import {
   StudentProfile,
@@ -172,14 +169,6 @@ export default function StudentProfilePage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Link
-              href="/onboarding"
-              className="px-4 py-2 rounded-full border border-slate-200 hover:bg-slate-50 text-xs font-medium text-slate-700 transition-colors flex items-center gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-[#4b37df]" />
-              <span>Launch Wizard</span>
-            </Link>
-
             <button
               type="button"
               onClick={() => handleSave()}
@@ -871,15 +860,11 @@ export default function StudentProfilePage() {
           </div>
         )}
 
-        {/* Save & Wizard Footer */}
+        {/* Save Footer */}
         <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
-          <Link
-            href="/onboarding"
-            className="text-xs text-[#4b37df] hover:underline font-medium inline-flex items-center gap-1"
-          >
-            <span>Need guided assistance? Launch the 5-step wizard</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
+          <p className="text-xs text-slate-400">
+            Keep your profile updated to receive real-time scholarship matches.
+          </p>
 
           <button
             type="submit"

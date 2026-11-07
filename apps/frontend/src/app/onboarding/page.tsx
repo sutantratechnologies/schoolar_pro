@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import {
   User,
   GraduationCap,
@@ -33,6 +34,7 @@ import {
 import {
   getStoredStudentProfile,
   saveStoredStudentProfile,
+  markOnboardingCompleted,
 } from '@/lib/student-profile';
 
 const POPULAR_DESTINATIONS = [
@@ -68,6 +70,7 @@ const STEPS = [
 ];
 
 export default function OnboardingPage() {
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [profile, setProfile] = useState<StudentProfile>(INITIAL_STUDENT_PROFILE);
   const [isCompletedModal, setIsCompletedModal] = useState(false);
@@ -75,8 +78,12 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     const loaded = getStoredStudentProfile();
+    if (loaded.isCompleted) {
+      router.replace('/dashboard');
+      return;
+    }
     setProfile(loaded);
-  }, []);
+  }, [router]);
 
   const readinessScore = calculateProfileReadiness(profile);
 
@@ -86,8 +93,10 @@ export default function OnboardingPage() {
       setCurrentStep((prev) => prev + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      setProfile((prev) => ({ ...prev, isCompleted: true }));
-      saveStoredStudentProfile({ ...profile, isCompleted: true });
+      const updated = { ...profile, isCompleted: true };
+      setProfile(updated);
+      saveStoredStudentProfile(updated);
+      markOnboardingCompleted();
       setIsCompletedModal(true);
     }
   };
@@ -104,6 +113,10 @@ export default function OnboardingPage() {
       setCurrentStep((prev) => prev + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
+      const updated = { ...profile, isCompleted: true };
+      setProfile(updated);
+      saveStoredStudentProfile(updated);
+      markOnboardingCompleted();
       setIsCompletedModal(true);
     }
   };

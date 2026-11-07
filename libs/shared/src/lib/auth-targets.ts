@@ -116,7 +116,10 @@ export function requiredRolesForPath(
   target: AppTarget,
   pathname: string
 ): readonly UserRole[] | undefined {
-  if (target === 'main' && pathHasPrefix(pathname, '/dashboard')) {
+  if (
+    target === 'main' &&
+    (pathHasPrefix(pathname, '/dashboard') || pathHasPrefix(pathname, '/onboarding'))
+  ) {
     return ['STUDENT'];
   }
 

@@ -62,10 +62,34 @@ export function saveStoredStudentProfile(profile: StudentProfile): void {
       lastUpdated: new Date().toISOString(),
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+
+    if (profile.isCompleted) {
+      document.cookie =
+        'bg_onboarding_completed=true; path=/; max-age=31536000; SameSite=Lax';
+    }
+
     window.dispatchEvent(new Event('bidyago_profile_updated'));
   } catch (e) {
     console.error('Failed to save student profile to storage', e);
   }
+}
+
+export function markOnboardingCompleted(): void {
+  if (typeof window === 'undefined') return;
+  document.cookie =
+    'bg_onboarding_completed=true; path=/; max-age=31536000; SameSite=Lax';
+  const current = getStoredStudentProfile();
+  saveStoredStudentProfile({ ...current, isCompleted: true });
+}
+
+export function isOnboardingCompleted(): boolean {
+  if (typeof window === 'undefined') return false;
+  const inCookie = document.cookie
+    .split(';')
+    .some((c) => c.trim().startsWith('bg_onboarding_completed=true'));
+  if (inCookie) return true;
+  const profile = getStoredStudentProfile();
+  return Boolean(profile.isCompleted);
 }
 
 export { calculateProfileReadiness };

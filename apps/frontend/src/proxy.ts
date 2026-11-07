@@ -95,7 +95,19 @@ export async function proxy(request: NextRequest) {
   }
 
   const role = session.role;
-  if (pathname === TARGET_POLICIES[target].loginPath && role) {
+  const isAuthRoute =
+    pathname === TARGET_POLICIES[target].loginPath ||
+    pathname === '/signup' ||
+    pathname === '/sign-up' ||
+    pathname === '/register' ||
+    pathname === '/auth/sign-up' ||
+    pathname === '/auth/signup' ||
+    pathname === '/auth/register' ||
+    pathname === '/auth/login' ||
+    pathname === '/forgot-password' ||
+    pathname === '/reset-password';
+
+  if (isAuthRoute && role) {
     const home = getHomePath(target, role);
     if (home) {
       return NextResponse.redirect(new URL(home, request.url));

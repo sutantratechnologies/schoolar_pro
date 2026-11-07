@@ -224,7 +224,7 @@ export const INITIAL_STUDENT_PROFILE: StudentProfile = {
     hasSOP: 'in_progress',
     plannedApplicationTimeline: 'Within 3-6 months',
   },
-  isCompleted: true,
+  isCompleted: false,
   lastUpdated: new Date().toISOString(),
 };
 
