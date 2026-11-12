@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import {
   ShieldAlert,
   Activity,
@@ -48,14 +49,13 @@ export default function SuperAdminControlCenterPage() {
             <h2 className="text-base font-semibold text-slate-900">Platform Staff & Roles</h2>
             <p className="text-xs text-slate-500">Assign administrator permissions to trusted team members</p>
           </div>
-          <button
-            type="button"
-            onClick={() => alert('Invite administrator dialog')}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900 hover:bg-[#4b37df] text-white text-xs font-medium transition-colors shadow-xs cursor-pointer"
+          <Link
+            href="/dashboard/roles-permissions"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#4b37df] hover:bg-[#3d2ac9] text-white text-xs font-medium transition-colors shadow-xs cursor-pointer"
           >
             <UserPlus className="w-3.5 h-3.5" />
-            <span>Invite Admin</span>
-          </button>
+            <span>Appoint New Admin</span>
+          </Link>
         </div>
 
         <div className="divide-y divide-slate-100">

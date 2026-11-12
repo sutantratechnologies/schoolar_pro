@@ -17,6 +17,8 @@ import { auth, authCapabilities } from '@sass-project/auth/server';
 import { createApiContext } from './auth.context.js';
 import { authResolvers } from './auth.resolvers.js';
 import { todoResolvers } from './todo.resolvers.js';
+import { adminRouter } from './admin.routes.js';
+import { scholarshipsRouter } from './scholarships.routes.js';
 
 const app = express();
 
@@ -136,6 +138,9 @@ app.get('/api/auth/config', (_req, res) => {
 });
 
 app.all('/api/auth/*splat', toNodeHandler(auth));
+
+app.use('/api/admin', requireSignedFrontendProxy, express.json(), adminRouter);
+app.use('/api/scholarships', requireSignedFrontendProxy, express.json(), scholarshipsRouter);
 
 const graphqlServer = new ApolloServer({
   typeDefs: [todoTypeDefs, authTypeDefs],

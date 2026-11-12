@@ -64,6 +64,10 @@ export default function LoginPage() {
       .catch(() => {});
 
     const searchParams = new URLSearchParams(window.location.search);
+    const queryEmail = searchParams.get('email');
+    if (queryEmail) {
+      setEmail(queryEmail);
+    }
     if (searchParams.get('verified') === '1') {
       setEmail(searchParams.get('email') ?? '');
       setSuccessMessage('Your email is verified. You can now sign in.');
@@ -105,11 +109,17 @@ export default function LoginPage() {
           return;
         }
 
-        setErrorMessage(
-          error.status === 401
-            ? 'No account is registered with these credentials.'
-            : error.message || 'Unable to sign in. Please try again.'
-        );
+        if (
+          error.status === 401 ||
+          error.code === 'INVALID_EMAIL_OR_PASSWORD' ||
+          error.message?.toLowerCase().includes('credentials') ||
+          error.message?.toLowerCase().includes('invalid email')
+        ) {
+          setErrorMessage('Invalid email or password.');
+          return;
+        }
+
+        setErrorMessage(error.message || 'Unable to sign in. Please try again.');
         return;
       }
 
@@ -305,8 +315,16 @@ export default function LoginPage() {
                 </div>
               </div>
             ) : errorMessage ? (
-              <div role="alert" className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800">
-                {errorMessage}
+              <div role="alert" className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 flex items-center justify-between gap-2">
+                <span>{errorMessage}</span>
+                {errorMessage === 'Invalid email or password.' && (
+                  <Link
+                    href={email.trim() ? `/forgot-password?email=${encodeURIComponent(email.trim())}` : '/forgot-password'}
+                    className="shrink-0 font-medium text-[#4b37df] hover:underline"
+                  >
+                    Reset password?
+                  </Link>
+                )}
               </div>
             ) : null}
             {successMessage && (
@@ -341,7 +359,7 @@ export default function LoginPage() {
                   Password
                 </label>
                 <Link
-                  href="/forgot-password"
+                  href={email.trim() ? `/forgot-password?email=${encodeURIComponent(email.trim())}` : '/forgot-password'}
                   className="text-xs font-normal text-[#4b37df] hover:underline"
                 >
                   Forgot password?

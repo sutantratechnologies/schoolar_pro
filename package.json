@@ -26,7 +26,8 @@
     "db:studio": "prisma studio --config libs/database/prisma.config.ts",
     "create:super-admin": "node scripts/create-super-admin.mjs",
     "lint": "nx affected --target=lint",
-    "format": "nx format:write"
+    "format": "nx format:write",
+    "postinstall": "node scripts/patch-next.mjs"
   },
   "private": true,
   "devDependencies": {

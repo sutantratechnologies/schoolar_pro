@@ -1,6 +1,8 @@
 export {
   TARGET_POLICIES,
+  getAppBaseUrl,
   getAppTarget,
+  getAppUrl,
   getHomePath,
   isAppTarget,
   isPathAvailable,

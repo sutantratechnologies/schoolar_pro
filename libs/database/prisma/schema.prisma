@@ -65,6 +65,8 @@ model User {
   reviewedApplications     OrganizationApplication[] @relation("ApplicationReviewer")
   adminInvitations         AdminInvitation[]         @relation("AdminInviter")
   auditLogs                AuditLog[]                @relation("AuditActor")
+  createdScholarships      Scholarship[]             @relation("ScholarshipCreator")
+  verifiedScholarships     Scholarship[]             @relation("ScholarshipVerifier")
 
   @@map("user")
 }
@@ -218,4 +220,186 @@ model AuditLog {
   @@index([actorId, createdAt])
   @@index([resource, resourceId, createdAt])
   @@map("audit_log")
+}
+
+
+enum ScholarshipVisibility {
+  PUBLIC
+  UNLISTED
+  RESTRICTED
+}
+
+enum PublicationStatus {
+  DRAFT
+  PENDING_VERIFICATION
+  VERIFIED
+  PUBLISHED
+  UNPUBLISHED
+  ARCHIVED
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  VERIFIED
+  NEEDS_REVISION
+  REJECTED
+}
+
+enum CycleStatus {
+  UPCOMING
+  OPEN
+  CLOSING_SOON
+  CLOSED
+  SELECTION_IN_PROGRESS
+  RESULTS_ANNOUNCED
+  CANCELLED
+}
+
+model Scholarship {
+  id                        String                @id @default(cuid())
+  title                     String                @db.VarChar(300)
+  slug                      String                @unique @db.VarChar(200)
+  shortDescription          String                @db.Text
+  description               String                @db.Text
+  provider                  String                @db.VarChar(255)
+  providerType              String                @db.VarChar(100)
+  opportunityType           String                @default("Degree-seeking scholarship") @db.VarChar(100)
+  categories                String[]
+  logoUrl                   String?               @db.VarChar(2048)
+  coverImageUrl             String?               @db.VarChar(2048)
+  officialWebsite           String                @db.VarChar(2048)
+  isFeatured                Boolean               @default(false)
+  showOnHomepage            Boolean               @default(true)
+  visibility                ScholarshipVisibility @default(PUBLIC)
+  publicationStatus         PublicationStatus     @default(DRAFT)
+  publishedAt               DateTime?             @db.Timestamptz(3)
+  displayPriority           Int                   @default(0)
+
+  // Section 2: Study Information
+  destinationCountries      String[]
+  studyLocation             String?               @db.VarChar(255)
+  academicLevels            String[]
+  fieldsOfStudy             String[]
+  specificSubjects          String[]
+  studyMode                 String                @default("On-campus") @db.VarChar(50)
+  studyDuration             String?               @db.VarChar(100)
+  instructionLanguages      String[]
+  intakePeriod              String?               @db.VarChar(100)
+  participatingInstitutions String[]
+
+  // Section 3: Eligibility Criteria
+  eligibleNationalities     String[]
+  excludedNationalities     String[]
+  nepaleseEligible          String                @default("YES") @db.VarChar(20)
+  residencyRequirements    String?               @db.Text
+  minAge                    Int?
+  maxAge                    Int?
+  ageCalculationDate        String?               @db.VarChar(100)
+  ageExceptions             String?               @db.Text
+  minGpa                    Float?
+  gpaScale                  String?               @db.VarChar(50)
+  minPercentage             Float?
+  requiredQualification     String?               @db.VarChar(255)
+  requiredBackground        String?               @db.Text
+  graduationYearReq         String?               @db.VarChar(100)
+  academicPrerequisites     String?               @db.Text
+  languageRequirements      Json                  @default("{}") @db.JsonB
+  otherEligibility          Json                  @default("{}") @db.JsonB
+
+  // Section 4: Funding & Benefits
+  fundingClassification    String                @default("Fully funded") @db.VarChar(100)
+  tuitionCoverage           String                @default("Covered") @db.VarChar(50)
+  tuitionAmount             Float?
+  tuitionCurrency           String?               @db.VarChar(10)
+  monthlyStipend            Float?
+  stipendCurrency           String?               @db.VarChar(10)
+  stipendFrequency          String?               @default("Monthly") @db.VarChar(50)
+  accommodationSupport      String                @default("Not specified") @db.VarChar(50)
+  accommodationAmount       Float?
+  travelAllowance           String                @default("Not covered") @db.VarChar(50)
+  airfareCoverage           String                @default("Covered") @db.VarChar(50)
+  healthInsurance           String                @default("Covered") @db.VarChar(50)
+  researchAllowance         Float?
+  booksCoverage             String?               @db.VarChar(50)
+  applicationFeeCoverage    String?               @db.VarChar(50)
+  otherFinancialBenefits    Json                  @default("[]") @db.JsonB
+  benefitsDescription       String?               @db.Text
+
+  // Section 5: Application Details
+  applicationRoute          String                @default("Apply through official scholarship portal") @db.VarChar(100)
+  applicationMethod         String                @default("Online") @db.VarChar(50)
+  applicationPortalUrl      String?               @db.VarChar(2048)
+  applicationGuideUrl       String?               @db.VarChar(2048)
+  applicationFee            Float?
+  applicationFeeCurrency    String?               @db.VarChar(10)
+  interviewRequired         String                @default("NO") @db.VarChar(20)
+  entranceExamination       String                @default("NO") @db.VarChar(20)
+  selectionProcedure        String?               @db.Text
+  contactEmail              String?               @db.VarChar(320)
+  contactWebsite            String?               @db.VarChar(2048)
+
+  // Section 6 & Tracks
+  requiredDocuments         Json                  @default("[]") @db.JsonB
+  applicationTracks         Json                  @default("[]") @db.JsonB
+  conditionsAndExceptions   Json                  @default("[]") @db.JsonB
+
+  // Section 8: Sources & Verification
+  primaryOfficialSource     String                @db.VarChar(2048)
+  additionalSources         Json                  @default("[]") @db.JsonB
+  sourceOrganization        String?               @db.VarChar(255)
+  sourceType                String                @default("Official scholarship portal") @db.VarChar(100)
+  lastVerifiedDate          DateTime?             @db.Timestamptz(3)
+  verifiedById              String?
+  verificationNotes         String?               @db.Text
+  verificationStatus        VerificationStatus    @default(UNVERIFIED)
+  verificationChecklist     Json                  @default("{}") @db.JsonB
+  verificationHistory       Json                  @default("[]") @db.JsonB
+  nextReviewDate            DateTime?             @db.Timestamptz(3)
+
+  // Section 9: SEO
+  seoTitle                  String?               @db.VarChar(300)
+  seoDescription            String?               @db.Text
+  socialSharingImage        String?               @db.VarChar(2048)
+
+  // Relations & Auditing
+  createdById               String?
+  createdBy                 User?                 @relation("ScholarshipCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  verifiedBy                User?                 @relation("ScholarshipVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
+  cycles                    ScholarshipCycle[]
+  createdAt                 DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt                 DateTime              @updatedAt @db.Timestamptz(3)
+
+  @@index([publicationStatus, visibility])
+  @@index([providerType, opportunityType])
+  @@index([fundingClassification])
+  @@index([verificationStatus])
+  @@index([createdById])
+  @@map("scholarship")
+}
+
+model ScholarshipCycle {
+  id                        String       @id @default(cuid())
+  scholarshipId             String
+  cycleName                 String       @db.VarChar(255)
+  applicationYear           Int
+  intakeYear                Int
+  intakeSemester            String       @default("Fall") @db.VarChar(50)
+  cycleOpeningDate          DateTime?    @db.Timestamptz(3)
+  applicationDeadline       DateTime?    @db.Timestamptz(3)
+  deadlineTimezone          String?      @default("UTC+05:45") @db.VarChar(50)
+  selectionAnnouncementDate DateTime?    @db.Timestamptz(3)
+  programmeStartDate        DateTime?    @db.Timestamptz(3)
+  programmeEndDate          DateTime?    @db.Timestamptz(3)
+  cycleStatus               CycleStatus  @default(OPEN)
+  officialApplicationUrl    String?      @db.VarChar(2048)
+  cycleEligibilityOverrides Json?        @db.JsonB
+  cycleFundingOverrides     Json?        @db.JsonB
+  cycleDocumentOverrides    Json?        @db.JsonB
+  createdAt                 DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt                 DateTime     @updatedAt @db.Timestamptz(3)
+  scholarship               Scholarship  @relation(fields: [scholarshipId], references: [id], onDelete: Cascade)
+
+  @@index([scholarshipId, applicationYear])
+  @@index([cycleStatus, applicationDeadline])
+  @@map("scholarship_cycle")
 }

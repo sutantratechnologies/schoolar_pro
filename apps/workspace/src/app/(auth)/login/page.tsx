@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, Eye, EyeOff, Building2, ArrowRight } from 'lucide-react';
 import { authClient } from '@/lib/auth';
+import { getAppUrl } from '@/lib/auth/targets';
 
 export default function WorkspaceLoginPage() {
   const router = useRouter();
@@ -17,6 +18,12 @@ export default function WorkspaceLoginPage() {
   const { data: sessionData, isPending: sessionPending } = authClient.useSession();
 
   useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const queryEmail = searchParams.get('email');
+    if (queryEmail) {
+      setEmail(queryEmail);
+    }
+
     if (!sessionPending && sessionData?.user) {
       const role = (sessionData.user as { role?: string })?.role;
       if (role === 'COLLEGE') {
@@ -41,7 +48,16 @@ export default function WorkspaceLoginPage() {
       });
 
       if (error) {
-        setErrorMessage(error.message || 'Invalid organization credentials.');
+        if (
+          error.status === 401 ||
+          error.code === 'INVALID_EMAIL_OR_PASSWORD' ||
+          error.message?.toLowerCase().includes('credentials') ||
+          error.message?.toLowerCase().includes('invalid email')
+        ) {
+          setErrorMessage('Invalid email or password.');
+        } else {
+          setErrorMessage(error.message || 'Invalid organization credentials.');
+        }
         setIsLoading(false);
         return;
       }
@@ -104,8 +120,21 @@ export default function WorkspaceLoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4 pt-2">
             {errorMessage && (
-              <div role="alert" className="p-3.5 bg-rose-950/60 border border-rose-800 text-xs text-rose-300 rounded-2xl leading-relaxed">
-                {errorMessage}
+              <div role="alert" className="p-3.5 bg-rose-950/60 border border-rose-800 text-xs text-rose-300 rounded-2xl leading-relaxed flex items-center justify-between gap-2">
+                <span>{errorMessage}</span>
+                {errorMessage === 'Invalid email or password.' && (
+                  <Link
+                    href={getAppUrl(
+                      'main',
+                      email.trim()
+                        ? `/forgot-password?email=${encodeURIComponent(email.trim())}`
+                        : '/forgot-password'
+                    )}
+                    className="shrink-0 font-medium text-purple-300 hover:underline"
+                  >
+                    Reset?
+                  </Link>
+                )}
               </div>
             )}
 
@@ -128,9 +157,22 @@ export default function WorkspaceLoginPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-slate-300">
-                Password
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-medium text-slate-300">
+                  Password
+                </label>
+                <Link
+                  href={getAppUrl(
+                    'main',
+                    email.trim()
+                      ? `/forgot-password?email=${encodeURIComponent(email.trim())}`
+                      : '/forgot-password'
+                  )}
+                  className="text-xs font-normal text-purple-400 hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input

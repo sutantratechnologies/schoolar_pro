@@ -68,8 +68,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         if (responseError) {
           const message =
-            responseError.status === 401
-              ? 'No account is registered with these credentials.'
+            responseError.status === 401 ||
+            responseError.code === 'INVALID_EMAIL_OR_PASSWORD' ||
+            responseError.message?.toLowerCase().includes('credentials')
+              ? 'Invalid email or password.'
               : responseError.message || 'Unable to sign in.';
           setError(message);
           throw new Error(message);
@@ -80,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const role = session?.user.role;
         const home = isUserRole(role) ? getHomePath(target, role) : undefined;
         if (!home) {
-          const message = 'No account is registered with these credentials.';
+          const message = 'Invalid email or password.';
           setError(message);
           throw new Error(message);
         }

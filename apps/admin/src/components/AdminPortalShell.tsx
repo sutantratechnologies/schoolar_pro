@@ -28,16 +28,14 @@ import {
   LogOut,
   Menu,
   X,
-  ExternalLink,
   Plus,
+  User as UserIcon,
 } from 'lucide-react';
 import type { CurrentSession } from '@sass-project/contracts';
 import { authClient } from '@/lib/auth';
-import { getAppUrl } from '@/lib/auth/targets';
 
 interface NavItem {
   id: string;
-  number: string;
   title: string;
   href: string;
   icon: React.ElementType;
@@ -48,6 +46,7 @@ interface NavItem {
 
 interface NavSection {
   title?: string;
+  superOnly?: boolean;
   items: NavItem[];
 }
 
@@ -56,19 +55,17 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       {
         id: 'overview',
-        number: '01',
-        title: 'Dashboard Overview',
+        title: 'Overview',
         href: '/dashboard',
         icon: LayoutDashboard,
       },
     ],
   },
   {
-    title: 'PLATFORM MANAGEMENT',
+    title: 'SCHOLARSHIP MANAGEMENT',
     items: [
       {
         id: 'scholarships',
-        number: '02',
         title: 'Scholarships',
         href: '/dashboard/scholarships',
         icon: GraduationCap,
@@ -76,7 +73,6 @@ const NAV_SECTIONS: NavSection[] = [
       },
       {
         id: 'cycles',
-        number: '03',
         title: 'Scholarship Cycles',
         href: '/dashboard/cycles',
         icon: CalendarRange,
@@ -85,7 +81,6 @@ const NAV_SECTIONS: NavSection[] = [
       },
       {
         id: 'destinations',
-        number: '04',
         title: 'Countries & Destinations',
         href: '/dashboard/destinations',
         icon: Globe2,
@@ -93,18 +88,9 @@ const NAV_SECTIONS: NavSection[] = [
       },
       {
         id: 'content',
-        number: '05',
         title: 'Guides & Content',
         href: '/dashboard/content',
         icon: BookOpen,
-      },
-      {
-        id: 'institutions',
-        number: '06',
-        title: 'Institutions',
-        href: '/dashboard/institutions',
-        icon: Landmark,
-        badge: '260+',
       },
     ],
   },
@@ -113,7 +99,6 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       {
         id: 'students',
-        number: '07',
         title: 'Students',
         href: '/dashboard/students',
         icon: Users,
@@ -121,7 +106,6 @@ const NAV_SECTIONS: NavSection[] = [
       },
       {
         id: 'organizations',
-        number: '08',
         title: 'Organizations',
         href: '/dashboard/organizations',
         icon: Building2,
@@ -129,31 +113,26 @@ const NAV_SECTIONS: NavSection[] = [
       },
       {
         id: 'applications',
-        number: '09',
         title: 'Organization Applications',
         href: '/dashboard/applications',
         icon: FileCheck2,
-        badge: '6 New',
+        badge: '5',
         badgeColor: 'bg-amber-50 text-amber-700 border-amber-200 font-semibold',
       },
       {
-        id: 'admin-management',
-        number: '10',
-        title: 'Admin Management',
-        href: '/dashboard/super',
-        icon: UserCog,
-        superOnly: true,
-        badge: 'Root',
-        badgeColor: 'bg-purple-50 text-purple-700 border-purple-200',
+        id: 'institutions',
+        title: 'Institutions',
+        href: '/dashboard/institutions',
+        icon: Landmark,
+        badge: '260+',
       },
     ],
   },
   {
-    title: 'PLATFORM OPERATIONS',
+    title: 'OPERATIONS',
     items: [
       {
         id: 'notifications',
-        number: '11',
         title: 'Notifications',
         href: '/dashboard/notifications',
         icon: Bell,
@@ -162,7 +141,6 @@ const NAV_SECTIONS: NavSection[] = [
       },
       {
         id: 'support',
-        number: '12',
         title: 'Support & Reports',
         href: '/dashboard/support',
         icon: LifeBuoy,
@@ -170,14 +148,12 @@ const NAV_SECTIONS: NavSection[] = [
       },
       {
         id: 'analytics',
-        number: '13',
-        title: 'Analytics & Reports',
+        title: 'Analytics',
         href: '/dashboard/analytics',
         icon: BarChart3,
       },
       {
         id: 'activity-logs',
-        number: '14',
         title: 'Activity Logs',
         href: '/dashboard/activity-logs',
         icon: ScrollText,
@@ -185,11 +161,20 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
-    title: 'SYSTEM CONTROL',
+    title: 'SUPER ADMIN ONLY',
+    superOnly: true,
     items: [
       {
+        id: 'admin-management',
+        title: 'Admin Management',
+        href: '/dashboard/super',
+        icon: UserCog,
+        superOnly: true,
+        badge: 'Root',
+        badgeColor: 'bg-purple-50 text-purple-700 border-purple-200',
+      },
+      {
         id: 'roles-permissions',
-        number: '15',
         title: 'Roles & Permissions',
         href: '/dashboard/roles-permissions',
         icon: ShieldCheck,
@@ -197,7 +182,6 @@ const NAV_SECTIONS: NavSection[] = [
       },
       {
         id: 'billing',
-        number: '16',
         title: 'Billing & Subscriptions',
         href: '/dashboard/billing',
         icon: CreditCard,
@@ -205,7 +189,6 @@ const NAV_SECTIONS: NavSection[] = [
       },
       {
         id: 'integrations',
-        number: '17',
         title: 'Integrations',
         href: '/dashboard/integrations',
         icon: Cpu,
@@ -213,7 +196,6 @@ const NAV_SECTIONS: NavSection[] = [
       },
       {
         id: 'settings',
-        number: '18',
         title: 'Platform Settings',
         href: '/dashboard/settings',
         icon: Settings2,
@@ -221,7 +203,6 @@ const NAV_SECTIONS: NavSection[] = [
       },
       {
         id: 'security',
-        number: '19',
         title: 'Security & Access',
         href: '/dashboard/security',
         icon: Lock,
@@ -285,6 +266,11 @@ export function AdminPortalShell({
     const query = sidebarSearch.trim().toLowerCase();
 
     return NAV_SECTIONS.map((section) => {
+      // Hide entire Super Admin section for normal admins
+      if (section.superOnly && !isSuperAdmin) {
+        return { ...section, items: [] };
+      }
+
       const items = section.items.filter((item) => {
         if (item.superOnly && !isSuperAdmin) {
           return false;
@@ -292,7 +278,6 @@ export function AdminPortalShell({
         if (!query) return true;
         return (
           item.title.toLowerCase().includes(query) ||
-          item.number.includes(query) ||
           section.title?.toLowerCase().includes(query)
         );
       });
@@ -323,25 +308,30 @@ export function AdminPortalShell({
       >
         {/* Top: Brand Header & Search */}
         <div className="flex flex-col min-h-0 flex-1">
-          <div className="h-16 px-5 flex items-center justify-between border-b border-slate-100 shrink-0">
-            <Link href="/dashboard" className="flex items-center gap-2.5 group">
+          <div className="h-18 px-5 py-3 flex items-center justify-between border-b border-slate-100 shrink-0">
+            <Link href="/dashboard" className="flex items-center gap-3 group">
               <Image
                 src="/bidyago_logo.png"
                 alt="BidyaGo"
-                width={120}
-                height={30}
+                width={124}
+                height={32}
                 className="h-7 w-auto object-contain transition-transform group-hover:scale-105"
                 priority
               />
-              <span
-                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider border ${
-                  isSuperAdmin
-                    ? 'text-[#4b37df] bg-[#4b37df]/10 border-[#4b37df]/20'
-                    : 'text-rose-700 bg-rose-50 border-rose-200'
-                }`}
-              >
-                {isSuperAdmin ? 'Super Admin' : 'Admin'}
-              </span>
+              <div className="flex flex-col">
+                <span className="text-[11px] font-semibold text-slate-900 tracking-tight leading-none">
+                  Administration
+                </span>
+                <span
+                  className={`text-[9px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider border w-fit mt-1 ${
+                    isSuperAdmin
+                      ? 'text-[#4b37df] bg-[#4b37df]/10 border-[#4b37df]/20'
+                      : 'text-rose-700 bg-rose-50 border-rose-200'
+                  }`}
+                >
+                  {isSuperAdmin ? 'Super Admin' : 'Admin'}
+                </span>
+              </div>
             </Link>
 
             <button
@@ -354,7 +344,7 @@ export function AdminPortalShell({
             </button>
           </div>
 
-          {/* Quick Search inside Sidebar */}
+          {/* Quick Jump Search inside Sidebar */}
           <div className="px-3.5 pt-3 pb-1 shrink-0">
             <div className="relative">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -362,7 +352,7 @@ export function AdminPortalShell({
                 type="text"
                 value={sidebarSearch}
                 onChange={(e) => setSidebarSearch(e.target.value)}
-                placeholder="Jump to (e.g. 02, billing)..."
+                placeholder="Search menu..."
                 className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200/90 rounded-xl placeholder:text-slate-400 text-slate-900 focus:outline-hidden focus:border-[#4b37df] focus:bg-white focus:ring-1 focus:ring-[#4b37df] transition-all"
               />
               {sidebarSearch && (
@@ -378,17 +368,17 @@ export function AdminPortalShell({
           </div>
 
           {/* Navigation Links Scroll Container */}
-          <nav className="px-3 py-3 space-y-5 overflow-y-auto flex-1 scrollbar-thin">
+          <nav className="px-3 py-3 space-y-4 overflow-y-auto flex-1 scrollbar-thin">
             {filteredSections.map((section, idx) => (
               <div key={section.title || `section-${idx}`} className="space-y-0.5">
                 {section.title && (
-                  <div className="px-3 pt-1 pb-1 flex items-center justify-between">
-                    <p className="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
+                  <div className="px-3 pt-2 pb-1 flex items-center justify-between">
+                    <p className="text-[10px] font-semibold tracking-wider text-slate-400 uppercase">
                       {section.title}
                     </p>
-                    {section.title === 'SYSTEM CONTROL' && (
-                      <span className="text-[9px] font-semibold text-[#4b37df] bg-[#4b37df]/10 border border-[#4b37df]/20 px-1.5 py-0.2 rounded-md">
-                        SUPER
+                    {section.superOnly && (
+                      <span className="text-[9px] font-bold text-[#4b37df] bg-[#4b37df]/10 border border-[#4b37df]/20 px-1.5 py-0.2 rounded-md">
+                        ROOT
                       </span>
                     )}
                   </div>
@@ -407,15 +397,6 @@ export function AdminPortalShell({
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <span
-                          className={`text-[10px] font-mono tracking-tight shrink-0 font-medium ${
-                            active
-                              ? 'text-white/80'
-                              : 'text-slate-400 group-hover:text-slate-600'
-                          }`}
-                        >
-                          {item.number}.
-                        </span>
                         <Icon
                           className={`w-4 h-4 shrink-0 transition-colors ${
                             active
@@ -442,38 +423,42 @@ export function AdminPortalShell({
               </div>
             ))}
 
-            {/* Connected Portals Quick Switcher */}
-            <div className="pt-3 border-t border-slate-100 space-y-1">
-              <p className="px-3 pb-1 text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
-                Connected Portals
-              </p>
-              <a
-                href={getAppUrl('main', '/')}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex items-center justify-between px-3 py-1.5 rounded-xl text-xs text-slate-600 hover:text-slate-950 hover:bg-slate-100/80 transition-all"
+            {/* Account & Profile Quick Access */}
+            <div className="pt-2 border-t border-slate-100 space-y-0.5">
+              <Link
+                href="/dashboard/profile"
+                className={`group flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                  pathname === '/dashboard/profile'
+                    ? 'bg-[#4b37df] text-white shadow-sm shadow-[#4b37df]/25 font-semibold'
+                    : 'text-slate-600 hover:text-slate-950 hover:bg-slate-100/80'
+                }`}
               >
-                <span>Student Portal</span>
-                <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-700" />
-              </a>
-              <a
-                href={getAppUrl('workspace', '/')}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex items-center justify-between px-3 py-1.5 rounded-xl text-xs text-slate-600 hover:text-slate-950 hover:bg-slate-100/80 transition-all"
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <UserIcon className="w-4 h-4 shrink-0 text-slate-400 group-hover:text-slate-700" />
+                  <span>My Profile</span>
+                </div>
+              </Link>
+
+              <button
+                type="button"
+                onClick={handleSignOut}
+                disabled={signingOut}
+                className="w-full group flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-rose-600 hover:bg-rose-50 transition-all cursor-pointer disabled:opacity-50"
               >
-                <span>Partner Workspace</span>
-                <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-700" />
-              </a>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <LogOut className="w-4 h-4 shrink-0 text-rose-500" />
+                  <span>Logout</span>
+                </div>
+              </button>
             </div>
           </nav>
         </div>
 
-        {/* Bottom: User Card & Sign Out */}
+        {/* Bottom User Floating Card */}
         <div className="p-3.5 border-t border-slate-100 bg-slate-50/50 shrink-0">
           <div className="p-2.5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs flex items-center justify-between gap-2.5">
             <Link
-              href={isSuperAdmin ? '/dashboard/super' : '/dashboard'}
+              href="/dashboard/profile"
               className="flex items-center gap-2.5 min-w-0 flex-1 hover:opacity-85 transition-opacity"
             >
               <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#4b37df] to-[#6d5ae6] text-white text-xs font-semibold flex items-center justify-center shrink-0 shadow-xs">
@@ -493,8 +478,8 @@ export function AdminPortalShell({
               type="button"
               onClick={handleSignOut}
               disabled={signingOut}
-              title="Sign Out"
-              aria-label="Sign Out"
+              title="Logout"
+              aria-label="Logout"
               className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer shrink-0 disabled:opacity-50"
             >
               <LogOut className="w-4 h-4" />
@@ -524,7 +509,7 @@ export function AdminPortalShell({
                 type="text"
                 value={sidebarSearch}
                 onChange={(e) => setSidebarSearch(e.target.value)}
-                placeholder="Search admin tools, scholarships, users..."
+                placeholder="Search admin controls, scholarships, users..."
                 className="w-full pl-9 pr-3.5 py-1.5 rounded-full border border-slate-200 bg-slate-50 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-[#4b37df] focus:bg-white focus:ring-1 focus:ring-[#4b37df] transition-all"
               />
             </div>
@@ -534,16 +519,18 @@ export function AdminPortalShell({
           <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
             <span className="hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-[11px] font-medium text-slate-600 border border-slate-200/60">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Platform Live • v2.4</span>
+              <span>Platform Live</span>
             </span>
 
-            <Link
-              href="/dashboard/scholarships"
-              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#4b37df] hover:bg-[#3c2cc5] text-white text-xs font-medium transition-all shadow-xs cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add Scholarship</span>
-            </Link>
+            {isSuperAdmin && (
+              <Link
+                href="/dashboard/roles-permissions"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#4b37df] hover:bg-[#3c2cc5] text-white text-xs font-medium transition-all shadow-xs cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Invite Admin</span>
+              </Link>
+            )}
 
             {/* Notification Bell */}
             <div className="relative">
@@ -572,12 +559,12 @@ export function AdminPortalShell({
                   </div>
                   <div className="space-y-2 text-xs">
                     <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-100">
-                      <p className="font-medium text-amber-950">6 Organization Applications Pending</p>
+                      <p className="font-medium text-amber-950">5 Organization Applications Pending</p>
                       <p className="text-[11px] text-amber-700 mt-0.5">Consultancies waiting for credential verification.</p>
                     </div>
                     <div className="p-2.5 rounded-xl bg-purple-50/70 border border-purple-100">
-                      <p className="font-medium text-purple-950">MEXT Scholarship Intake Active</p>
-                      <p className="text-[11px] text-purple-700 mt-0.5">142 students submitted inquiries today.</p>
+                      <p className="font-medium text-purple-950">Active Scholarship Cycles Open</p>
+                      <p className="text-[11px] text-purple-700 mt-0.5">MEXT Japan and Australia Awards intakes live.</p>
                     </div>
                   </div>
                 </div>
@@ -586,9 +573,9 @@ export function AdminPortalShell({
 
             {/* User Profile Avatar */}
             <Link
-              href={isSuperAdmin ? '/dashboard/super' : '/dashboard'}
+              href="/dashboard/profile"
               className="w-8 h-8 rounded-full bg-slate-900 hover:bg-[#4b37df] text-white text-xs font-medium flex items-center justify-center transition-colors shadow-2xs"
-              title={isSuperAdmin ? 'Super Admin Management' : 'Admin Profile'}
+              title="My Administrator Profile"
             >
               {initials}
             </Link>

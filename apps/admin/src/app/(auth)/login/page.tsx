@@ -16,6 +16,12 @@ export default function AdminLoginPage() {
   const { data: sessionData, isPending: sessionPending } = authClient.useSession();
 
   useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const queryEmail = searchParams.get('email');
+    if (queryEmail) {
+      setEmail(queryEmail);
+    }
+
     if (!sessionPending && sessionData?.user) {
       const userRole = (sessionData.user as { role?: string })?.role;
       if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
@@ -38,7 +44,16 @@ export default function AdminLoginPage() {
       });
 
       if (error) {
-        setErrorMessage(error.message || 'Invalid administrator credentials.');
+        if (
+          error.status === 401 ||
+          error.code === 'INVALID_EMAIL_OR_PASSWORD' ||
+          error.message?.toLowerCase().includes('credentials') ||
+          error.message?.toLowerCase().includes('invalid email')
+        ) {
+          setErrorMessage('Invalid email or password.');
+        } else {
+          setErrorMessage(error.message || 'Invalid administrator credentials.');
+        }
         setIsLoading(false);
         return;
       }

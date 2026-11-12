@@ -92,6 +92,8 @@ export async function proxy(request: NextRequest) {
   const role = session.role;
   const isAuthRoute =
     pathname === '/login' ||
+    pathname === '/create-password' ||
+    pathname === '/activate' ||
     pathname.startsWith('/auth/');
 
   if (isAuthRoute && role) {

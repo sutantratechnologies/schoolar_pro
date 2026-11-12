@@ -10,10 +10,11 @@ import {
 } from '@sass-project/shared';
 import { prisma } from '@sass-project/database';
 
-type AuthEmail = {
+export type AuthEmail = {
   to: string;
   subject: string;
   text: string;
+  html?: string;
 };
 
 type ResendErrorResponse = {
@@ -255,11 +256,11 @@ function getRequestTarget(
   return isAppTarget(target) ? target : null;
 }
 
-async function sendAuthEmail({ to, subject, text }: AuthEmail): Promise<void> {
+export async function sendAuthEmail({ to, subject, text, html }: AuthEmail): Promise<void> {
   if (!environment.resendApiKey || !environment.emailFrom) {
-    throw new Error(
-      'Authentication email delivery is not configured. Set RESEND_API_KEY and AUTH_EMAIL_FROM.'
-    );
+    console.log(`[AUTH EMAIL DEV] To: ${to} | Subject: ${subject}`);
+    console.log(`[AUTH EMAIL DEV] Text: ${text}`);
+    return;
   }
 
   const sensitiveValues = [
@@ -268,6 +269,16 @@ async function sendAuthEmail({ to, subject, text }: AuthEmail): Promise<void> {
     ...(text.match(/\b\d{6}\b/g) ?? []),
   ];
   const idempotencyKey = randomUUID();
+  const emailPayload: Record<string, string> = {
+    from: environment.emailFrom,
+    to,
+    subject,
+    text,
+  };
+  if (html) {
+    emailPayload['html'] = html;
+  }
+
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -275,12 +286,7 @@ async function sendAuthEmail({ to, subject, text }: AuthEmail): Promise<void> {
       'Content-Type': 'application/json',
       'Idempotency-Key': idempotencyKey,
     },
-    body: JSON.stringify({
-      from: environment.emailFrom,
-      to,
-      subject,
-      text,
-    }),
+    body: JSON.stringify(emailPayload),
     signal: AbortSignal.timeout(10_000),
   });
 
@@ -295,12 +301,7 @@ async function sendAuthEmail({ to, subject, text }: AuthEmail): Promise<void> {
           'Content-Type': 'application/json',
           'Idempotency-Key': idempotencyKey,
         },
-        body: JSON.stringify({
-          from: environment.emailFrom,
-          to,
-          subject,
-          text,
-        }),
+        body: JSON.stringify(emailPayload),
         signal: AbortSignal.timeout(10_000),
       });
 
@@ -378,10 +379,20 @@ export const auth = betterAuth({
     revokeSessionsOnPasswordReset: true,
     sendResetPassword: async ({ user, url }) => {
       const publicUrl = toPublicAuthUrl(url);
+      let finalUrl = publicUrl;
+      try {
+        const urlObj = new URL(publicUrl);
+        if (!urlObj.searchParams.has('email')) {
+          urlObj.searchParams.set('email', user.email);
+        }
+        finalUrl = urlObj.toString();
+      } catch {
+        // Fallback to publicUrl if URL parsing fails
+      }
       await sendAuthEmail({
         to: user.email,
         subject: 'Reset your BidyaGo password',
-        text: `Use this secure link to reset your password: ${publicUrl}`,
+        text: `Use this secure link to reset your password: ${finalUrl}`,
       });
     },
   },
@@ -435,7 +446,7 @@ export const auth = betterAuth({
             !TARGET_POLICIES[target].allowedRoles.includes(user.role)
           ) {
             throw APIError.fromStatus('UNAUTHORIZED', {
-              message: 'No account is registered with these credentials.',
+              message: 'Invalid email or password.',
               code: 'INVALID_EMAIL_OR_PASSWORD',
             });
           }
