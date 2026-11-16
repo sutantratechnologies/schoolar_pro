@@ -91,7 +91,6 @@ export default function PublicScholarshipDetailPage() {
   }
 
   const s = scholarship;
-  const flag = getCountryFlag(s.destinationCountries?.[0]);
   const deadlineStr = formatDeadline(s.activeCycle?.applicationDeadline);
   const daysLeft = calculateDaysLeft(s.activeCycle?.applicationDeadline);
 
@@ -114,95 +113,155 @@ export default function PublicScholarshipDetailPage() {
             <span className="text-slate-900 font-semibold truncate max-w-xs">{s.title}</span>
           </div>
 
-          {/* Hero Card */}
-          <div className="relative rounded-3xl overflow-hidden bg-white border border-slate-200/80 shadow-2xs">
-            <div className="h-44 sm:h-60 w-full bg-linear-to-r from-slate-900 via-indigo-950 to-purple-950 relative overflow-hidden">
-              {s.coverImageUrl && (
-                <img
-                  src={s.coverImageUrl}
-                  alt={s.title}
-                  className="w-full h-full object-cover opacity-40 mix-blend-overlay"
-                />
-              )}
-              <div className="absolute inset-0 bg-linear-to-t from-slate-900/90 via-slate-900/40 to-transparent" />
-              <div className="absolute top-4 right-4 flex items-center gap-2">
+          {/* Scholarship Header Card with Cover Image */}
+          <div className="rounded-3xl bg-white border border-slate-200/90 overflow-hidden shadow-xs">
+            {/* Cover Image Banner (Clean, no overlapping avatar or cut-off text) */}
+            <div className="relative w-full h-48 sm:h-64 lg:h-72 overflow-hidden bg-slate-900">
+              <img
+                src={s.coverImageUrl?.trim() || 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=1600&auto=format&fit=crop'}
+                alt={s.title}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-linear-to-t from-slate-950/65 via-slate-950/15 to-transparent" />
+
+              {/* Badges inside Cover Image */}
+              <div className="absolute top-4 left-4 flex flex-wrap items-center gap-2 z-10">
+                {s.destinationCountries && s.destinationCountries.length > 0 ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md text-slate-900 text-xs font-semibold shadow-xs">
+                    <span>{getCountryFlag(s.destinationCountries[0])}</span>
+                    <span>{s.destinationCountries.join(', ')}</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md text-slate-900 text-xs font-semibold shadow-xs">
+                    <Globe2 className="w-3.5 h-3.5 text-slate-600" />
+                    <span>Global Destination</span>
+                  </span>
+                )}
+
+                {s.opportunityType && (
+                  <span className="px-3 py-1 rounded-full bg-white/95 backdrop-blur-md text-[#4b37df] text-xs font-semibold shadow-xs">
+                    {s.opportunityType}
+                  </span>
+                )}
+
+                {s.providerType && (
+                  <span className="px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-md text-slate-700 text-xs font-medium shadow-xs">
+                    {s.providerType}
+                  </span>
+                )}
+              </div>
+
+              <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
                 {s.isFeatured && (
-                  <span className="px-3 py-1 rounded-full bg-amber-400 text-slate-900 text-xs font-semibold flex items-center gap-1 shadow-sm">
-                    <Award className="w-3.5 h-3.5" />
+                  <span className="px-3 py-1 rounded-full bg-amber-400 text-slate-950 text-xs font-bold flex items-center gap-1 shadow-sm">
+                    <Award className="w-3.5 h-3.5 text-amber-950" />
                     <span>Featured</span>
                   </span>
                 )}
                 {s.verificationStatus === 'VERIFIED' && (
-                  <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1 shadow-sm">
-                    <ShieldCheck className="w-3.5 h-3.5" />
+                  <span className="px-3 py-1 rounded-full bg-emerald-600 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm">
+                    <ShieldCheck className="w-4 h-4 text-white" />
                     <span>Officially Verified</span>
                   </span>
                 )}
               </div>
             </div>
 
-            <div className="p-6 sm:p-8 -mt-16 sm:-mt-20 relative z-10 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-              <div className="flex items-start gap-4">
-                {s.logoUrl ? (
-                  <img
-                    src={s.logoUrl}
-                    alt={s.provider}
-                    className="w-20 h-20 rounded-2xl border-4 border-white shadow-md object-cover bg-white shrink-0"
-                  />
-                ) : (
-                  <div className="w-20 h-20 rounded-2xl border-4 border-white shadow-md bg-[#4b37df] text-white flex items-center justify-center font-bold text-2xl shrink-0">
-                    {flag}
-                  </div>
-                )}
-                <div>
-                  <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                    <span className="text-xs font-semibold text-[#4b37df] bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200">
-                      {s.opportunityType || 'Degree-seeking'}
-                    </span>
-                    <span className="text-xs text-slate-500 font-medium">
-                      {s.providerType}
-                    </span>
-                  </div>
-                  <h1 className="text-xl sm:text-3xl font-bold text-slate-900 tracking-tight leading-snug">
-                    {s.title}
-                  </h1>
-                  <p className="text-xs sm:text-sm text-slate-600 mt-1 flex items-center gap-2">
+            {/* Clean Content Area Below Cover Image */}
+            <div className="p-6 sm:p-8 space-y-6">
+
+            {/* Title, Provider & Action Buttons */}
+            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+              <div className="space-y-3 max-w-3xl">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight leading-snug">
+                  {s.title}
+                </h1>
+
+                <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs sm:text-sm text-slate-600">
+                  <span className="inline-flex items-center gap-1.5 font-medium text-slate-800">
                     <Building className="w-4 h-4 text-slate-400 shrink-0" />
                     <span>{s.provider}</span>
-                  </p>
+                  </span>
+
+                  {s.studyLocation && (
+                    <>
+                      <span className="text-slate-300">•</span>
+                      <span className="text-slate-600">{s.studyLocation}</span>
+                    </>
+                  )}
+
+                  {s.studyMode && (
+                    <>
+                      <span className="text-slate-300">•</span>
+                      <span className="text-slate-600">{s.studyMode} Mode</span>
+                    </>
+                  )}
+
+                  {s.officialWebsite && (
+                    <>
+                      <span className="text-slate-300">•</span>
+                      <a
+                        href={s.officialWebsite}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-[#4b37df] hover:underline font-medium"
+                      >
+                        <span>Official Website</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </>
+                  )}
                 </div>
+
+                {s.shortDescription && (
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed pt-1">
+                    {s.shortDescription}
+                  </p>
+                )}
               </div>
 
-              {/* Apply Button */}
-              <div className="shrink-0 flex items-center gap-3">
+              {/* Quick Apply CTA */}
+              <div className="shrink-0 flex flex-col sm:flex-row lg:flex-col gap-2.5">
                 <a
                   href={s.primaryOfficialSource || s.officialWebsite}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#4b37df] hover:bg-[#3d2ac9] text-white text-xs sm:text-sm font-semibold transition-all shadow-md shadow-purple-500/20"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-[#4b37df] hover:bg-[#3d2ac9] text-white text-xs sm:text-sm font-semibold transition-all shadow-md shadow-purple-500/15 cursor-pointer"
                 >
                   <span>Apply on Official Portal</span>
                   <ExternalLink className="w-4 h-4" />
                 </a>
+
+                {s.applicationGuideUrl && (
+                  <a
+                    href={s.applicationGuideUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-medium transition-colors"
+                  >
+                    <span>Application Guidelines</span>
+                    <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                  </a>
+                )}
               </div>
             </div>
 
-            {/* 4 Quick Highlights */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 border-t border-slate-100 bg-slate-50/50 divide-x divide-y sm:divide-y-0 divide-slate-100">
-              <div className="p-4 sm:p-5">
+            {/* 4 Quick Highlight Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 pt-5 border-t border-slate-100">
+              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/70">
                 <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                   Funding Coverage
                 </div>
                 <div className="text-base sm:text-lg font-bold text-slate-900 mt-1 flex items-center gap-1.5">
                   <DollarSign className="w-4 h-4 text-[#4b37df]" />
-                  <span>{s.fundingClassification}</span>
+                  <span>{s.fundingClassification || 'Full Funding'}</span>
                 </div>
                 <div className="text-[11px] text-slate-500 mt-0.5">
-                  Tuition: {s.tuitionCoverage}
+                  Tuition: {s.tuitionCoverage || 'Waived'}
                 </div>
               </div>
 
-              <div className="p-4 sm:p-5">
+              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/70">
                 <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                   Monthly Stipend
                 </div>
@@ -216,20 +275,20 @@ export default function PublicScholarshipDetailPage() {
                 </div>
               </div>
 
-              <div className="p-4 sm:p-5">
+              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/70">
                 <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                  Destination
+                  Destination & Level
                 </div>
                 <div className="text-base sm:text-lg font-bold text-slate-900 mt-1 flex items-center gap-1.5 truncate">
                   <Globe2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span className="truncate">{s.destinationCountries?.join(', ')}</span>
+                  <span className="truncate">{s.destinationCountries?.join(', ') || 'Global'}</span>
                 </div>
                 <div className="text-[11px] text-slate-500 mt-0.5 truncate">
-                  {s.academicLevels?.slice(0, 2).join(', ')}
+                  {s.academicLevels?.slice(0, 2).join(', ') || 'All levels'}
                 </div>
               </div>
 
-              <div className="p-4 sm:p-5">
+              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/70">
                 <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                   Application Deadline
                 </div>
@@ -243,6 +302,7 @@ export default function PublicScholarshipDetailPage() {
               </div>
             </div>
           </div>
+        </div>
 
           {/* Public Detail Tabs */}
           <div className="flex items-center gap-2 border-b border-slate-200 overflow-x-auto pb-1 text-xs sm:text-sm font-medium">

@@ -20,6 +20,22 @@ import {
 import { getAppUrl } from '@/lib/auth/targets';
 
 export default function AdminOverviewPage() {
+  const [scholarships, setScholarships] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch('/api/admin/scholarships');
+        if (res.ok) {
+          const data = await res.json();
+          setScholarships(data.scholarships || []);
+        }
+      } catch (err) {
+        console.warn('Failed to load scholarships', err);
+      }
+    }
+    load();
+  }, []);
   const stats = [
     {
       label: 'Registered Students',
@@ -33,9 +49,9 @@ export default function AdminOverviewPage() {
     },
     {
       label: 'Active Scholarships',
-      value: '1,420',
-      change: '48 bilateral flagship',
-      subtext: '8 cycles closing soon',
+      value: scholarships.length.toString(),
+      change: `${scholarships.filter((s) => s.publicationStatus === 'PUBLISHED').length} published live`,
+      subtext: `${scholarships.filter((s) => s.verificationStatus === 'VERIFIED').length} officially verified`,
       href: '/dashboard/scholarships',
       icon: GraduationCap,
       color: 'text-blue-600',
@@ -93,41 +109,6 @@ export default function AdminOverviewPage() {
       contact: 'global-admissions@nagoya-fu.jp',
       badgeColor: 'bg-purple-50 text-[#4b37df] border-purple-200',
       status: 'Institution Verified',
-    },
-  ];
-
-  const flagshipPrograms = [
-    {
-      name: 'MEXT University Recommendation 2026/27',
-      country: 'Japan 🇯🇵',
-      deadline: 'May 15, 2026',
-      status: 'Active Intake',
-      students: '142 Applicants',
-      badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    },
-    {
-      name: 'Australia Awards Scholarships 2026',
-      country: 'Australia 🇦🇺',
-      deadline: 'April 30, 2026',
-      status: 'Selection Round',
-      students: '98 Applicants',
-      badge: 'bg-blue-50 text-blue-700 border-blue-200',
-    },
-    {
-      name: 'Chevening UK Master’s Scholarship',
-      country: 'United Kingdom 🇬🇧',
-      deadline: 'November 2026',
-      status: 'Open Inquiries',
-      students: '310 Saved',
-      badge: 'bg-purple-50 text-[#4b37df] border-purple-200',
-    },
-    {
-      name: 'Global Korea Scholarship (GKS Graduate)',
-      country: 'South Korea 🇰🇷',
-      deadline: 'October 2026',
-      status: 'Upcoming Cycle',
-      students: '86 Watching',
-      badge: 'bg-slate-100 text-slate-700 border-slate-200',
     },
   ];
 
@@ -326,25 +307,58 @@ export default function AdminOverviewPage() {
           </div>
 
           <div className="space-y-2.5 pt-1">
-            {flagshipPrograms.map((prog) => (
-              <div
-                key={prog.name}
-                className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100 hover:bg-white hover:border-slate-200 transition-all text-xs"
-              >
-                <div className="space-y-0.5 min-w-0 pr-2">
-                  <p className="font-semibold text-slate-900 truncate">{prog.name}</p>
-                  <p className="text-[11px] text-slate-500">
-                    {prog.country} • Deadline: <span className="text-slate-700 font-medium">{prog.deadline}</span>
-                  </p>
-                </div>
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${prog.badge}`}>
-                    {prog.status}
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-medium">{prog.students}</span>
+            {scholarships.length === 0 ? (
+              <div className="p-8 text-center bg-slate-50/60 rounded-2xl border border-dashed border-slate-200 space-y-2">
+                <GraduationCap className="w-8 h-8 text-slate-300 mx-auto" />
+                <p className="text-xs font-semibold text-slate-800">No Scholarships Created Yet</p>
+                <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+                  Create your first scholarship program using the 9-section builder to monitor active intakes.
+                </p>
+                <div className="pt-1">
+                  <Link
+                    href="/dashboard/scholarships/new"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#4b37df] hover:bg-[#3d2ac9] text-white text-[11px] font-medium transition-colors"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Create Scholarship</span>
+                  </Link>
                 </div>
               </div>
-            ))}
+            ) : (
+              scholarships.slice(0, 4).map((prog) => {
+                const primaryCountry = prog.destinationCountries?.[0] || 'Global';
+                const deadline = prog.activeCycle?.applicationDeadline
+                  ? new Date(prog.activeCycle.applicationDeadline).toLocaleDateString()
+                  : 'Annual Intake';
+                return (
+                  <div
+                    key={prog.id}
+                    className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100 hover:bg-white hover:border-slate-200 transition-all text-xs"
+                  >
+                    <div className="space-y-0.5 min-w-0 pr-2">
+                      <p className="font-semibold text-slate-900 truncate">{prog.title}</p>
+                      <p className="text-[11px] text-slate-500">
+                        {primaryCountry} • Deadline: <span className="text-slate-700 font-medium">{deadline}</span>
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${
+                          prog.publicationStatus === 'PUBLISHED'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-slate-100 text-slate-700 border-slate-200'
+                        }`}
+                      >
+                        {prog.publicationStatus}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-medium">
+                        Quality: {prog.completenessScore}%
+                      </span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 

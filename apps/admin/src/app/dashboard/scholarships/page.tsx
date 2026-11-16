@@ -17,7 +17,9 @@ import {
   Check,
   X,
   RefreshCw,
+  GraduationCap,
 } from 'lucide-react';
+import CountrySelect from '@/components/ui/CountrySelect';
 
 interface ScholarshipItem {
   id: string;
@@ -131,7 +133,7 @@ export default function AdminScholarshipsPage() {
     const activeCycles = scholarships.reduce((acc, s) => acc + (s.cyclesCount || 0), 0);
     const avgScore = total > 0
       ? Math.round(scholarships.reduce((acc, s) => acc + (s.completenessScore || 0), 0) / total)
-      : 100;
+      : 0;
 
     return { total, published, pendingVerification, activeCycles, avgScore };
   }, [scholarships]);
@@ -432,19 +434,13 @@ export default function AdminScholarshipsPage() {
           </div>
 
           <div>
-            <select
+            <CountrySelect
+              multiple={false}
               value={countryFilter}
-              onChange={(e) => setCountryFilter(e.target.value)}
-              className="w-full px-3 py-2 rounded-2xl border border-slate-200 text-xs text-slate-700 bg-white focus:outline-hidden focus:border-[#4b37df]"
-            >
-              <option value="ALL">Destination: All</option>
-              <option value="Japan">Japan</option>
-              <option value="United Kingdom">United Kingdom</option>
-              <option value="Australia">Australia</option>
-              <option value="South Korea">South Korea</option>
-              <option value="Germany">Germany</option>
-              <option value="United States">United States</option>
-            </select>
+              onChange={(c: string) => setCountryFilter(c || 'ALL')}
+              placeholder="Destination: All"
+              quickPicks={['Nepal', 'Japan', 'United Kingdom', 'Australia', 'United States', 'Germany', 'South Korea', 'Canada']}
+            />
           </div>
 
           <div>
@@ -665,8 +661,31 @@ export default function AdminScholarshipsPage() {
 
               {filtered.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400 text-xs">
-                    No scholarship programmes matched your search criteria.
+                  <td colSpan={8} className="py-16 text-center">
+                    <div className="max-w-sm mx-auto space-y-3">
+                      <div className="w-12 h-12 rounded-2xl bg-purple-50 text-[#4b37df] flex items-center justify-center mx-auto">
+                        <GraduationCap className="w-6 h-6" />
+                      </div>
+                      <h4 className="text-sm font-semibold text-slate-800">
+                        {scholarships.length === 0 ? 'No Scholarships Created Yet' : 'No Matching Scholarships Found'}
+                      </h4>
+                      <p className="text-xs text-slate-400 font-light leading-relaxed">
+                        {scholarships.length === 0
+                          ? 'Get started by registering your first scholarship program using our official 9-section builder.'
+                          : 'Try clearing your filters or searching with different keywords.'}
+                      </p>
+                      {scholarships.length === 0 && (
+                        <div className="pt-2">
+                          <Link
+                            href="/dashboard/scholarships/new"
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#4b37df] hover:bg-[#3d2ac9] text-white text-xs font-medium transition-colors shadow-xs"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Create First Scholarship</span>
+                          </Link>
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )}

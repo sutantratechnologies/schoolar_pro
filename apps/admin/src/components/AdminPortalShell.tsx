@@ -69,22 +69,18 @@ const NAV_SECTIONS: NavSection[] = [
         title: 'Scholarships',
         href: '/dashboard/scholarships',
         icon: GraduationCap,
-        badge: '1,420',
       },
       {
         id: 'cycles',
         title: 'Scholarship Cycles',
         href: '/dashboard/cycles',
         icon: CalendarRange,
-        badge: 'Active',
-        badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
       },
       {
         id: 'destinations',
         title: 'Countries & Destinations',
         href: '/dashboard/destinations',
         icon: Globe2,
-        badge: '48',
       },
       {
         id: 'content',
@@ -102,29 +98,24 @@ const NAV_SECTIONS: NavSection[] = [
         title: 'Students',
         href: '/dashboard/students',
         icon: Users,
-        badge: '12.4k',
       },
       {
         id: 'organizations',
         title: 'Organizations',
         href: '/dashboard/organizations',
         icon: Building2,
-        badge: '84',
       },
       {
         id: 'applications',
         title: 'Organization Applications',
         href: '/dashboard/applications',
         icon: FileCheck2,
-        badge: '5',
-        badgeColor: 'bg-amber-50 text-amber-700 border-amber-200 font-semibold',
       },
       {
         id: 'institutions',
         title: 'Institutions',
         href: '/dashboard/institutions',
         icon: Landmark,
-        badge: '260+',
       },
     ],
   },
@@ -563,8 +554,8 @@ export function AdminPortalShell({
                       <p className="text-[11px] text-amber-700 mt-0.5">Consultancies waiting for credential verification.</p>
                     </div>
                     <div className="p-2.5 rounded-xl bg-purple-50/70 border border-purple-100">
-                      <p className="font-medium text-purple-950">Active Scholarship Cycles Open</p>
-                      <p className="text-[11px] text-purple-700 mt-0.5">MEXT Japan and Australia Awards intakes live.</p>
+                      <p className="font-medium text-purple-950">Active Scholarship Cycles</p>
+                      <p className="text-[11px] text-purple-700 mt-0.5">Application intake deadlines monitored automatically.</p>
                     </div>
                   </div>
                 </div>

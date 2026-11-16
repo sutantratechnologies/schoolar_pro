@@ -87,35 +87,9 @@ export interface PublicScholarship {
   }>;
 }
 
-export function getCountryFlag(countryName?: string): string {
-  if (!countryName) return '🌐';
-  const c = countryName.toLowerCase().trim();
-  const map: Record<string, string> = {
-    japan: '🇯🇵',
-    'united kingdom': '🇬🇧',
-    uk: '🇬🇧',
-    australia: '🇦🇺',
-    'south korea': '🇰🇷',
-    korea: '🇰🇷',
-    germany: '🇩🇪',
-    'united states': '🇺🇸',
-    usa: '🇺🇸',
-    canada: '🇨🇦',
-    france: '🇫🇷',
-    china: '🇨🇳',
-    india: '🇮🇳',
-    'european union': '🇪🇺',
-    eu: '🇪🇺',
-    netherlands: '🇳🇱',
-    sweden: '🇸🇪',
-    norway: '🇳🇴',
-    switzerland: '🇨🇭',
-    'new zealand': '🇳🇿',
-    singapore: '🇸🇬',
-    ireland: '🇮🇪',
-  };
-  return map[c] || '🌐';
-}
+import { getCountryFlag as getFlagFromList } from './countries';
+
+export { getFlagFromList as getCountryFlag };
 
 export function formatStipend(
   amount?: number | null,

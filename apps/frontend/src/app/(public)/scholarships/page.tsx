@@ -1,25 +1,16 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import Link from 'next/link';
 import Navbar from '@/components/home/Navbar';
 import Footer from '@/components/home/Footer';
+import ScholarshipCard from '@/components/ScholarshipCard';
 import {
   Search,
-  ExternalLink,
   ShieldCheck,
-  Building,
   Globe2,
-  Clock,
-  ArrowRight,
   Loader2,
 } from 'lucide-react';
-import {
-  PublicScholarship,
-  getCountryFlag,
-  formatDeadline,
-  calculateDaysLeft,
-} from '@/lib/scholarships';
+import { PublicScholarship, getCountryFlag } from '@/lib/scholarships';
 
 export default function ScholarshipsPage() {
   const [scholarships, setScholarships] = useState<PublicScholarship[]>([]);
@@ -196,109 +187,9 @@ export default function ScholarshipsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filtered.map((s) => {
-                const flag = getCountryFlag(s.destinationCountries?.[0]);
-                const deadlineStr = formatDeadline(s.activeCycle?.applicationDeadline);
-                const daysLeft = calculateDaysLeft(s.activeCycle?.applicationDeadline);
-
-                return (
-                  <div
-                    key={s.id}
-                    className="bg-white rounded-3xl border border-slate-200/80 p-6 flex flex-col justify-between hover:shadow-lg hover:border-slate-300 transition-all group"
-                  >
-                    <div className="space-y-4">
-                      {/* Top Badges */}
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 font-medium text-slate-900 text-xs">
-                          <span className="text-lg">{flag}</span>
-                          <span>{s.destinationCountries?.join(', ')}</span>
-                        </div>
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
-                          s.fundingClassification === 'Fully funded'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : 'bg-blue-50 text-blue-700 border border-blue-200'
-                        }`}>
-                          {s.fundingClassification}
-                        </span>
-                      </div>
-
-                      {/* Title & Provider */}
-                      <div>
-                        <Link
-                          href={`/scholarships/${s.slug || s.id}`}
-                          className="font-bold text-slate-900 text-base sm:text-lg group-hover:text-[#4b37df] transition-colors line-clamp-2 leading-snug"
-                        >
-                          {s.title}
-                        </Link>
-                        <p className="text-xs text-slate-500 mt-1 line-clamp-1 flex items-center gap-1">
-                          <Building className="w-3 h-3 text-slate-400 shrink-0" />
-                          <span>{s.provider}</span>
-                        </p>
-                      </div>
-
-                      {/* Key Coverage Entitlements */}
-                      <div className="p-3.5 bg-slate-50 rounded-2xl space-y-1.5 text-xs">
-                        <div className="flex items-center justify-between">
-                          <span className="text-slate-500">Tuition Coverage:</span>
-                          <span className="font-semibold text-slate-900">{s.tuitionCoverage}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-slate-500">Monthly Stipend:</span>
-                          <span className="font-semibold text-slate-900">
-                            {s.monthlyStipend
-                              ? `${s.stipendCurrency || ''} ${s.monthlyStipend.toLocaleString()}/mo`
-                              : 'Included in Grant'}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-slate-500">Academic Level:</span>
-                          <span className="font-semibold text-slate-900 truncate max-w-[140px]">
-                            {s.academicLevels?.slice(0, 2).join(', ')}
-                          </span>
-                        </div>
-                      </div>
-
-                      <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
-                        {s.shortDescription}
-                      </p>
-                    </div>
-
-                    {/* Bottom Deadlines & Actions */}
-                    <div className="pt-4 border-t border-slate-100 mt-5 space-y-3">
-                      <div className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-1.5 text-rose-600 font-semibold">
-                          <Clock className="w-3.5 h-3.5" />
-                          <span>{deadlineStr}</span>
-                        </div>
-                        {daysLeft !== null && daysLeft > 0 && (
-                          <span className="text-[10px] font-semibold text-[#4b37df] bg-purple-50 px-2 py-0.5 rounded-full">
-                            {daysLeft} days remaining
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 pt-1">
-                        <Link
-                          href={`/scholarships/${s.slug || s.id}`}
-                          className="w-full py-2.5 rounded-full bg-slate-900 hover:bg-[#4b37df] text-white text-xs font-medium flex items-center justify-center gap-1 transition-colors shadow-2xs"
-                        >
-                          <span>View Details</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </Link>
-                        <a
-                          href={s.primaryOfficialSource || s.officialWebsite}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="w-full py-2.5 rounded-full border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-medium flex items-center justify-center gap-1 transition-colors"
-                        >
-                          <span>Official Portal</span>
-                          <ExternalLink className="w-3 h-3 text-slate-400" />
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              {filtered.map((s) => (
+                <ScholarshipCard key={s.id} scholarship={s} />
+              ))}
 
               {filtered.length === 0 && !loading && (
                 <div className="col-span-full py-16 text-center bg-white rounded-3xl border border-slate-200 space-y-3">

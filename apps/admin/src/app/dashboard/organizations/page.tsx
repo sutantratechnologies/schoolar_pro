@@ -58,7 +58,7 @@ const INITIAL_PENDING: PendingVerification[] = [
     applicantName: 'Kenji Sato',
     applicantEmail: 'admissions-asia@nagoya-u.ac.jp',
     phone: '+81 52 789 5111',
-    licenseNumber: 'MEXT-UNI-JP-391',
+    licenseNumber: 'UNI-JP-391',
     city: 'Nagoya, Japan',
     submittedDate: '2026-10-31',
     status: 'pending',

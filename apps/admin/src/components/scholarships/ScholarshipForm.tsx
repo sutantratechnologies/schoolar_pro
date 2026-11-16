@@ -20,6 +20,7 @@ import {
   Clock,
   ChevronRight,
 } from 'lucide-react';
+import CountrySelect from '@/components/ui/CountrySelect';
 
 export interface ScholarshipFormData {
   id?: string;
@@ -196,12 +197,6 @@ const SECTIONS = [
   { id: 'publishing', label: '09. SEO & Publishing', icon: Sparkles, desc: 'Status, search SEO & launch' },
 ];
 
-const PRESET_COUNTRIES = [
-  'Japan', 'United Kingdom', 'Australia', 'United States', 'Germany',
-  'South Korea', 'Canada', 'France', 'China', 'India', 'Netherlands',
-  'Sweden', 'Norway', 'Switzerland', 'New Zealand', 'Singapore', 'Ireland',
-];
-
 const PRESET_LEVELS = [
   'Diploma', 'Undergraduate', "Bachelor's", "Master's",
   'PhD / Doctoral', 'Postdoctoral', 'Research', 'Exchange programme', 'Other',
@@ -238,6 +233,28 @@ export function ScholarshipForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [existingCycles, setExistingCycles] = useState<any[]>((initialData as any)?.cycles || []);
+  const [deletingCycleId, setDeletingCycleId] = useState<string | null>(null);
+
+  const handleDeleteExistingCycle = async (cycleId: string, cycleName: string) => {
+    if (!window.confirm(`Are you sure you want to delete the cycle "${cycleName}"?`)) return;
+    try {
+      setDeletingCycleId(cycleId);
+      const res = await fetch(`/api/admin/scholarships/cycles/${cycleId}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setExistingCycles((prev) => prev.filter((c) => c.id !== cycleId));
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.message || 'Failed to delete cycle');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Error deleting cycle');
+    } finally {
+      setDeletingCycleId(null);
+    }
+  };
 
   // Default values
   const [formData, setFormData] = useState<ScholarshipFormData>({
@@ -255,10 +272,10 @@ export function ScholarshipForm({
     isFeatured: initialData?.isFeatured || false,
     showOnHomepage: initialData?.showOnHomepage !== false,
     visibility: initialData?.visibility || 'PUBLIC',
-    publicationStatus: initialData?.publicationStatus || 'DRAFT',
+    publicationStatus: initialData?.publicationStatus || 'PUBLISHED',
     displayPriority: initialData?.displayPriority || 0,
 
-    destinationCountries: initialData?.destinationCountries || ['Japan'],
+    destinationCountries: initialData?.destinationCountries || [],
     studyLocation: initialData?.studyLocation || '',
     academicLevels: initialData?.academicLevels || ["Master's"],
     fieldsOfStudy: initialData?.fieldsOfStudy || ['Science & Technology'],
@@ -447,18 +464,6 @@ export function ScholarshipForm({
       return {
         ...prev,
         categories: exists ? prev.categories.filter((c) => c !== cat) : [...prev.categories, cat],
-      };
-    });
-  };
-
-  const toggleCountry = (country: string) => {
-    setFormData((prev) => {
-      const exists = prev.destinationCountries.includes(country);
-      return {
-        ...prev,
-        destinationCountries: exists
-          ? prev.destinationCountries.filter((c) => c !== country)
-          : [...prev.destinationCountries, country],
       };
     });
   };
@@ -688,7 +693,7 @@ export function ScholarshipForm({
                     required
                     value={formData.title}
                     onChange={(e) => handleTitleChange(e.target.value)}
-                    placeholder="e.g. MEXT Japanese Government (Monbukagakusho) Scholarship"
+                    placeholder="e.g. International Graduate Research Fellowship"
                     className="w-full px-4 py-2.5 rounded-2xl border border-slate-200 text-xs sm:text-sm text-slate-900 focus:outline-hidden focus:border-[#4b37df] focus:ring-1 focus:ring-[#4b37df]"
                   />
                 </div>
@@ -703,7 +708,7 @@ export function ScholarshipForm({
                       required
                       value={formData.slug}
                       onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                      placeholder="mext-japanese-government-scholarship"
+                      placeholder="international-graduate-research-fellowship"
                       className="w-full px-4 py-2.5 rounded-2xl border border-slate-200 text-xs sm:text-sm text-slate-900 focus:outline-hidden focus:border-[#4b37df] focus:ring-1 focus:ring-[#4b37df]"
                     />
                   </div>
@@ -717,7 +722,7 @@ export function ScholarshipForm({
                       required
                       value={formData.provider}
                       onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
-                      placeholder="e.g. Ministry of Education (MEXT), Japan"
+                      placeholder="e.g. Ministry of Higher Education / Partner Foundation"
                       className="w-full px-4 py-2.5 rounded-2xl border border-slate-200 text-xs sm:text-sm text-slate-900 focus:outline-hidden focus:border-[#4b37df] focus:ring-1 focus:ring-[#4b37df]"
                     />
                   </div>
@@ -889,28 +894,17 @@ export function ScholarshipForm({
               <div className="space-y-5">
                 {/* Destination Countries */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-2">
-                    Destination Countries <span className="text-rose-500">*</span>
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {PRESET_COUNTRIES.map((country) => {
-                      const selected = formData.destinationCountries.includes(country);
-                      return (
-                        <button
-                          key={country}
-                          type="button"
-                          onClick={() => toggleCountry(country)}
-                          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
-                            selected
-                              ? 'bg-[#4b37df] text-white shadow-2xs'
-                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                          }`}
-                        >
-                          {country}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <CountrySelect
+                    label="Destination Countries"
+                    required
+                    multiple={true}
+                    value={formData.destinationCountries}
+                    onChange={(countries: string[]) =>
+                      setFormData({ ...formData, destinationCountries: countries })
+                    }
+                    placeholder="Search and choose destination countries (e.g. Japan, UK, Australia)..."
+                    helperText="Select all countries where applicants can undertake their study or research."
+                  />
                 </div>
 
                 {/* Academic Levels */}
@@ -1066,6 +1060,32 @@ export function ScholarshipForm({
                       className="w-full px-4 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-900 bg-white"
                     />
                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                  <CountrySelect
+                    label="Eligible Nationalities"
+                    multiple={true}
+                    value={formData.eligibleNationalities}
+                    onChange={(countries: string[]) =>
+                      setFormData({ ...formData, eligibleNationalities: countries })
+                    }
+                    placeholder="Choose allowed citizenships (e.g. Nepal, Global)..."
+                    helperText="Applicants holding citizenship in any of these countries can apply."
+                    quickPicks={['Nepal', 'India', 'Bhutan', 'Bangladesh', 'Sri Lanka']}
+                  />
+
+                  <CountrySelect
+                    label="Excluded Nationalities"
+                    multiple={true}
+                    value={formData.excludedNationalities}
+                    onChange={(countries: string[]) =>
+                      setFormData({ ...formData, excludedNationalities: countries })
+                    }
+                    placeholder="Choose restricted citizenships (if any)..."
+                    helperText="Applicants holding citizenship from these countries are ineligible."
+                    quickPicks={[]}
+                  />
                 </div>
               </div>
 
@@ -1712,7 +1732,7 @@ export function ScholarshipForm({
                         ...formData,
                         initialCycle: { ...formData.initialCycle, cycleName: e.target.value },
                       })}
-                      placeholder="e.g. MEXT 2027 Research & Undergraduate Intake"
+                      placeholder="e.g. 2027/2028 Academic Intake Cycle"
                       className="w-full px-4 py-2.5 rounded-2xl border border-slate-200 text-xs sm:text-sm text-slate-900 bg-white"
                     />
                   </div>
@@ -1828,6 +1848,39 @@ export function ScholarshipForm({
                     />
                   </div>
                 </div>
+
+                {/* Existing Stored Cycles for this Scholarship */}
+                {existingCycles.length > 0 && (
+                  <div className="pt-4 border-t border-slate-200/80 space-y-3">
+                    <h3 className="text-xs font-semibold text-slate-800 uppercase tracking-wider">
+                      Existing Registered Cycles ({existingCycles.length})
+                    </h3>
+                    <div className="space-y-2">
+                      {existingCycles.map((cyc: any) => (
+                        <div
+                          key={cyc.id}
+                          className="p-3 bg-white rounded-2xl border border-slate-200 flex items-center justify-between text-xs shadow-2xs"
+                        >
+                          <div className="space-y-0.5">
+                            <div className="font-semibold text-slate-900">{cyc.cycleName || 'Intake Cycle'}</div>
+                            <div className="text-[11px] text-slate-400">
+                              Year: {cyc.applicationYear || cyc.intakeYear || '—'} • Status: {cyc.cycleStatus || 'OPEN'} • Deadline: {cyc.applicationDeadline ? new Date(cyc.applicationDeadline).toLocaleDateString() : 'Rolling'}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteExistingCycle(cyc.id, cyc.cycleName || 'this cycle')}
+                            disabled={deletingCycleId === cyc.id}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>{deletingCycleId === cyc.id ? 'Deleting...' : 'Delete'}</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -2042,7 +2095,7 @@ export function ScholarshipForm({
                       type="text"
                       value={formData.seoTitle}
                       onChange={(e) => setFormData({ ...formData, seoTitle: e.target.value })}
-                      placeholder="e.g. MEXT Japanese Government Scholarship for Nepali Students 2027"
+                      placeholder="e.g. Fully Funded Postgraduate Scholarship 2027 Guidelines"
                       className="w-full px-4 py-2.5 rounded-2xl border border-slate-200 text-xs sm:text-sm text-slate-900"
                     />
                   </div>

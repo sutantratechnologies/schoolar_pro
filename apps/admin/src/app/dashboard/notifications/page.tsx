@@ -17,13 +17,13 @@ interface NotificationBroadcast {
 const SAMPLE_NOTIFICATIONS: NotificationBroadcast[] = [
   {
     id: 'NOTIF-901',
-    title: 'MEXT 2027 Embassy Recommendation Window Now Open',
-    message: 'Applications are officially open. Submit your verified academic credentials and research proposals.',
-    targetAudience: 'ALL_STUDENTS',
-    channel: 'OMNICHANNEL',
+    title: 'Platform System Alert: Live Scholarship Intake Monitoring Active',
+    message: 'Global deadline monitoring and real-time intake cycle tracking are operational.',
+    targetAudience: 'SYSTEM_WIDE',
+    channel: 'IN_APP',
     sentAt: 'Today at 09:00 AM',
-    recipientCount: 12450,
-    openRate: '68.4%',
+    recipientCount: 0,
+    openRate: '100%',
   },
   {
     id: 'NOTIF-902',
