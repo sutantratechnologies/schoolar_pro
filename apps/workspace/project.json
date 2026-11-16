@@ -1,0 +1,25 @@
+{
+  "name": "@sass-project/workspace",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/workspace/src",
+  "projectType": "application",
+  "targets": {
+    "dev": {
+      "continuous": true,
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/workspace",
+        "command": "next dev -p 3002"
+      }
+    },
+    "start": {
+      "continuous": true,
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/workspace",
+        "command": "next start -p 3002"
+      }
+    }
+  }
+}
+

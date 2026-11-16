@@ -4,6 +4,9 @@
   "private": true,
   "nx": {
     "targets": {
+      "build": {
+        "cache": false
+      },
       "prune-lockfile": {
         "dependsOn": [
           "build"

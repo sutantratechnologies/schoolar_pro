@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { MailCheck, ArrowRight, ArrowLeft, RefreshCw } from 'lucide-react';
+import { MailCheck, ArrowRight, ArrowLeft, RefreshCw, Mail } from 'lucide-react';
 import { authClient } from '@/lib/auth';
 
 export default function VerifyEmailPage() {
@@ -17,7 +17,14 @@ export default function VerifyEmailPage() {
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    setEmail(new URLSearchParams(window.location.search).get('email') ?? '');
+    const params = new URLSearchParams(window.location.search);
+    const queryEmail = params.get('email');
+    if (queryEmail) {
+      setEmail(queryEmail);
+    }
+    if (params.get('resent') === '1') {
+      setResendStatus('A six-digit verification code has been sent to your email.');
+    }
   }, []);
 
   const handleResend = async () => {
@@ -112,32 +119,42 @@ export default function VerifyEmailPage() {
               Verify Your Email Address
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 font-normal leading-relaxed">
-              {email ? (
-                <>
-                  Enter the six-digit code if you received it at{' '}
-                  <span className="font-medium text-slate-700">{email}</span>.
-                  If it hasn’t arrived, use the resend option below.
-                </>
-              ) : (
-                'Enter the six-digit code if you received it. If it hasn’t arrived, use the resend option below.'
-              )}
+              Enter the six-digit code sent to your email. If you need a new code or skipped this step earlier, click &quot;Resend Verification Code&quot; below.
             </p>
           </div>
 
-          <label className="block text-left text-xs font-medium text-slate-700">
-            Verification code
-            <input
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              pattern="[0-9]{6}"
-              maxLength={6}
-              required
-              value={otp}
-              onChange={(event) => setOtp(event.target.value.replace(/\D/g, ''))}
-              className="mt-2 w-full rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm tracking-[0.3em] text-slate-900 focus:border-[#4b37df] focus:outline-hidden focus:ring-1 focus:ring-[#4b37df]"
-            />
-          </label>
+          <div className="space-y-4 text-left">
+            <label className="block text-xs font-medium text-slate-700">
+              Email address
+              <div className="relative mt-1.5">
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="name@example.com"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-full border border-slate-200 bg-white text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-[#4b37df] focus:ring-1 focus:ring-[#4b37df] transition-colors"
+                />
+              </div>
+            </label>
+
+            <label className="block text-xs font-medium text-slate-700">
+              Verification code
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                required
+                value={otp}
+                onChange={(event) => setOtp(event.target.value.replace(/\D/g, ''))}
+                placeholder="123456"
+                className="mt-1.5 w-full rounded-full border border-slate-200 bg-white px-4 py-2.5 text-center text-sm tracking-[0.3em] font-mono text-slate-900 placeholder:tracking-normal placeholder:font-sans placeholder:text-slate-400 focus:border-[#4b37df] focus:outline-hidden focus:ring-1 focus:ring-[#4b37df]"
+              />
+            </label>
+          </div>
 
           {errorMessage && (
             <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800">

@@ -116,7 +116,10 @@ export function requiredRolesForPath(
   target: AppTarget,
   pathname: string
 ): readonly UserRole[] | undefined {
-  if (target === 'main' && pathHasPrefix(pathname, '/dashboard')) {
+  if (
+    target === 'main' &&
+    (pathHasPrefix(pathname, '/dashboard') || pathHasPrefix(pathname, '/onboarding'))
+  ) {
     return ['STUDENT'];
   }
 
@@ -150,4 +153,39 @@ export function getHomePath(
   role: UserRole
 ): string | undefined {
   return TARGET_POLICIES[target].homeByRole[role];
+}
+
+export function getAppBaseUrl(target: AppTarget): string {
+  const browserGlobal =
+    typeof globalThis !== 'undefined' && 'window' in globalThis
+      ? (globalThis as unknown as { location?: { hostname?: string } })
+      : undefined;
+
+  if (browserGlobal?.location) {
+    if (process.env.NODE_ENV === 'production') {
+      if (target === 'portal') return 'https://admin.bidyago.com';
+      if (target === 'workspace') return 'https://workspace.bidyago.com';
+      return 'https://bidyago.com';
+    }
+    const host = browserGlobal.location.hostname || 'localhost';
+    if (target === 'portal') return `http://${host}:3001`;
+    if (target === 'workspace') return `http://${host}:3002`;
+    return `http://${host}:3000`;
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    if (target === 'portal') return process.env.ADMIN_APP_URL || 'https://admin.bidyago.com';
+    if (target === 'workspace') return process.env.WORKSPACE_APP_URL || 'https://workspace.bidyago.com';
+    return process.env.STUDENT_APP_URL || 'https://bidyago.com';
+  }
+
+  if (target === 'portal') return 'http://localhost:3001';
+  if (target === 'workspace') return 'http://localhost:3002';
+  return 'http://localhost:3000';
+}
+
+export function getAppUrl(target: AppTarget, path = '/'): string {
+  const baseUrl = getAppBaseUrl(target).replace(/\/$/, '');
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${baseUrl}${normalizedPath}`;
 }

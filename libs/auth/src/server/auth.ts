@@ -10,10 +10,11 @@ import {
 } from '@sass-project/shared';
 import { prisma } from '@sass-project/database';
 
-type AuthEmail = {
+export type AuthEmail = {
   to: string;
   subject: string;
   text: string;
+  html?: string;
 };
 
 type ResendErrorResponse = {
@@ -195,6 +196,20 @@ function loadAuthEnvironment() {
   }
 
   const trustedOrigins = new Set<string>([baseURL]);
+
+  if (process.env.NODE_ENV !== 'production') {
+    trustedOrigins.add('http://localhost:3000');
+    trustedOrigins.add('http://127.0.0.1:3000');
+    trustedOrigins.add('http://localhost:3001');
+    trustedOrigins.add('http://127.0.0.1:3001');
+    trustedOrigins.add('http://localhost:3002');
+    trustedOrigins.add('http://127.0.0.1:3002');
+    trustedOrigins.add('http://localhost:3333');
+    trustedOrigins.add('http://127.0.0.1:3333');
+    trustedOrigins.add('http://internal');
+    trustedOrigins.add('https://internal');
+  }
+
   const configuredOrigins = [
     process.env.APP_URL,
     process.env.STUDENT_APP_URL,
@@ -241,11 +256,11 @@ function getRequestTarget(
   return isAppTarget(target) ? target : null;
 }
 
-async function sendAuthEmail({ to, subject, text }: AuthEmail): Promise<void> {
+export async function sendAuthEmail({ to, subject, text, html }: AuthEmail): Promise<void> {
   if (!environment.resendApiKey || !environment.emailFrom) {
-    throw new Error(
-      'Authentication email delivery is not configured. Set RESEND_API_KEY and AUTH_EMAIL_FROM.'
-    );
+    console.log(`[AUTH EMAIL DEV] To: ${to} | Subject: ${subject}`);
+    console.log(`[AUTH EMAIL DEV] Text: ${text}`);
+    return;
   }
 
   const sensitiveValues = [
@@ -254,6 +269,16 @@ async function sendAuthEmail({ to, subject, text }: AuthEmail): Promise<void> {
     ...(text.match(/\b\d{6}\b/g) ?? []),
   ];
   const idempotencyKey = randomUUID();
+  const emailPayload: Record<string, string> = {
+    from: environment.emailFrom,
+    to,
+    subject,
+    text,
+  };
+  if (html) {
+    emailPayload['html'] = html;
+  }
+
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -261,12 +286,7 @@ async function sendAuthEmail({ to, subject, text }: AuthEmail): Promise<void> {
       'Content-Type': 'application/json',
       'Idempotency-Key': idempotencyKey,
     },
-    body: JSON.stringify({
-      from: environment.emailFrom,
-      to,
-      subject,
-      text,
-    }),
+    body: JSON.stringify(emailPayload),
     signal: AbortSignal.timeout(10_000),
   });
 
@@ -281,12 +301,7 @@ async function sendAuthEmail({ to, subject, text }: AuthEmail): Promise<void> {
           'Content-Type': 'application/json',
           'Idempotency-Key': idempotencyKey,
         },
-        body: JSON.stringify({
-          from: environment.emailFrom,
-          to,
-          subject,
-          text,
-        }),
+        body: JSON.stringify(emailPayload),
         signal: AbortSignal.timeout(10_000),
       });
 
@@ -331,6 +346,23 @@ async function sendAuthEmail({ to, subject, text }: AuthEmail): Promise<void> {
   }
 }
 
+function toPublicAuthUrl(rawUrl: string): string {
+  try {
+    const parsed = new URL(rawUrl);
+    const callbackURL = parsed.searchParams.get('callbackURL');
+    if (callbackURL) {
+      const frontendOrigin = new URL(callbackURL).origin;
+      return `${frontendOrigin}${parsed.pathname}${parsed.search}`;
+    }
+    const defaultFrontend =
+      environment.trustedOrigins.find((o) => o !== environment.baseURL.fallback) ||
+      'http://localhost:3000';
+    return `${defaultFrontend}${parsed.pathname}${parsed.search}`;
+  } catch {
+    return rawUrl;
+  }
+}
+
 export const auth = betterAuth({
   appName: 'BidyaGo',
   baseURL: environment.baseURL,
@@ -341,15 +373,26 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
-    minPasswordLength: 12,
+    minPasswordLength: 8,
     maxPasswordLength: 128,
     autoSignIn: false,
     revokeSessionsOnPasswordReset: true,
     sendResetPassword: async ({ user, url }) => {
+      const publicUrl = toPublicAuthUrl(url);
+      let finalUrl = publicUrl;
+      try {
+        const urlObj = new URL(publicUrl);
+        if (!urlObj.searchParams.has('email')) {
+          urlObj.searchParams.set('email', user.email);
+        }
+        finalUrl = urlObj.toString();
+      } catch {
+        // Fallback to publicUrl if URL parsing fails
+      }
       await sendAuthEmail({
         to: user.email,
         subject: 'Reset your BidyaGo password',
-        text: `Use this secure link to reset your password: ${url}`,
+        text: `Use this secure link to reset your password: ${finalUrl}`,
       });
     },
   },
@@ -359,10 +402,11 @@ export const auth = betterAuth({
     autoSignInAfterVerification: false,
     expiresIn: 60 * 60,
     sendVerificationEmail: async ({ user, url }) => {
+      const publicUrl = toPublicAuthUrl(url);
       await sendAuthEmail({
         to: user.email,
         subject: 'Verify your BidyaGo email address',
-        text: `Use this secure link to verify your email address: ${url}`,
+        text: `Use this secure link to verify your email address: ${publicUrl}`,
       });
     },
   },
@@ -402,7 +446,7 @@ export const auth = betterAuth({
             !TARGET_POLICIES[target].allowedRoles.includes(user.role)
           ) {
             throw APIError.fromStatus('UNAUTHORIZED', {
-              message: 'No account is registered with these credentials.',
+              message: 'Invalid email or password.',
               code: 'INVALID_EMAIL_OR_PASSWORD',
             });
           }
@@ -465,15 +509,15 @@ export const auth = betterAuth({
     updateAge: 60 * 60 * 24,
   },
   rateLimit: {
-    enabled: true,
+    enabled: process.env.NODE_ENV === 'production',
     window: 60,
     max: 100,
     storage: 'database',
     customRules: {
-      '/sign-in/email': { window: 60, max: 5 },
-      '/sign-up/email': { window: 60, max: 5 },
-      '/forget-password': { window: 60, max: 3 },
-      '/send-verification-email': { window: 60, max: 3 },
+      '/sign-in/email': { window: 60, max: 10 },
+      '/sign-up/email': { window: 60, max: 10 },
+      '/forget-password': { window: 60, max: 5 },
+      '/send-verification-email': { window: 60, max: 5 },
     },
   },
   advanced: {

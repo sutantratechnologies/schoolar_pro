@@ -16,7 +16,11 @@ import {
   GraduationCap,
   ShieldCheck,
 } from 'lucide-react';
-import { authClient, getAuthProviderConfig } from '@/lib/auth';
+import {
+  authClient,
+  getAuthProviderConfig,
+  resolveActiveSession,
+} from '@/lib/auth';
 import { getAppTarget, TARGET_POLICIES } from '@/lib/auth/targets';
 
 export default function SignupPage() {
@@ -31,8 +35,23 @@ export default function SignupPage() {
   const [googleEnabled, setGoogleEnabled] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const { data: sessionData, isPending: sessionPending } = authClient.useSession();
 
   useEffect(() => {
+    if (!sessionPending && sessionData?.user) {
+      window.location.href = '/dashboard';
+      return;
+    }
+
+    // Fast active session fallback check
+    void resolveActiveSession()
+      .then((s) => {
+        if (s?.user) {
+          window.location.href = '/dashboard';
+        }
+      })
+      .catch(() => {});
+
     if (!canRegister) {
       router.replace('/404');
       return;
@@ -41,10 +60,22 @@ export default function SignupPage() {
     void getAuthProviderConfig()
       .then(({ googleOAuthEnabled }) => setGoogleEnabled(googleOAuthEnabled))
       .catch(() => setGoogleEnabled(false));
-  }, [canRegister, router]);
+  }, [canRegister, router, sessionData, sessionPending]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!name.trim()) {
+      setErrorMessage('Please enter your full name.');
+      return;
+    }
+    if (!email.trim()) {
+      setErrorMessage('Please enter your email address.');
+      return;
+    }
+    if (password.length < 8) {
+      setErrorMessage(`Password must be at least 8 characters (currently ${password.length}).`);
+      return;
+    }
     if (!agreed) {
       setErrorMessage('Please agree to the Terms of Service and Privacy Policy to proceed.');
       return;
@@ -57,17 +88,37 @@ export default function SignupPage() {
     try {
       const { error } = await authClient.signUp.email({
         name: name.trim(),
-        email,
+        email: email.trim(),
         password,
         callbackURL: `${window.location.origin}/dashboard`,
       });
 
       if (error) {
-        setErrorMessage(error.message || 'Unable to create your account.');
+        const errAny = error as { code?: string; message?: string; status?: number };
+        if (
+          errAny.code === 'PASSWORD_TOO_SHORT' ||
+          errAny.message?.toLowerCase().includes('password')
+        ) {
+          setErrorMessage('Password must be at least 8 characters long.');
+        } else if (
+          errAny.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL' ||
+          errAny.code === 'USER_ALREADY_EXISTS' ||
+          errAny.status === 422 ||
+          errAny.message?.toLowerCase().includes('already exists')
+        ) {
+          setErrorMessage('An account with this email already exists. Please sign in instead.');
+        } else if (
+          errAny.status === 429 ||
+          errAny.message?.toLowerCase().includes('too many')
+        ) {
+          setErrorMessage('Too many attempts. Please wait a moment and try again.');
+        } else {
+          setErrorMessage(errAny.message || 'Unable to create your account. Please try again.');
+        }
         return;
       }
 
-      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+      router.push(`/verify-email?email=${encodeURIComponent(email.trim())}`);
     } catch {
       setErrorMessage('Unable to reach the authentication service. Try again.');
     } finally {
@@ -174,8 +225,13 @@ export default function SignupPage() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {errorMessage && (
-              <div role="alert" className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800">
-                {errorMessage}
+              <div role="alert" className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 flex items-center justify-between gap-2">
+                <span>{errorMessage}</span>
+                {errorMessage.includes('sign in') && (
+                  <Link href="/login" className="font-semibold underline text-[#4b37df] hover:text-[#3f2cd6] shrink-0">
+                    Sign In →
+                  </Link>
+                )}
               </div>
             )}
             {successMessage && (
@@ -233,7 +289,7 @@ export default function SignupPage() {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
-                  minLength={12}
+                  minLength={8}
                   maxLength={128}
                   autoComplete="new-password"
                   value={password}
@@ -254,7 +310,19 @@ export default function SignupPage() {
                   )}
                 </button>
               </div>
-              <p className="text-[11px] text-slate-400">Must be at least 12 characters</p>
+              <div className="flex items-center justify-between text-[11px] pt-0.5">
+                {password.length === 0 ? (
+                  <span className="text-slate-400">Must be at least 8 characters</span>
+                ) : password.length < 8 ? (
+                  <span className="text-amber-600 font-medium">
+                    Must be at least 8 characters ({password.length}/8 entered)
+                  </span>
+                ) : (
+                  <span className="text-emerald-600 font-medium flex items-center gap-1">
+                    ✓ Meets length requirement ({password.length} characters)
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Terms and Privacy Checkbox */}

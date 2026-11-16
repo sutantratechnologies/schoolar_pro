@@ -29,15 +29,21 @@ async function getSessionRole(
   const prefix = `bg_${target}.`;
   const hasSessionCookie = request.cookies
     .getAll()
-    .some((cookie) => cookie.name.endsWith(`${prefix}session_token`));
+    .some(
+      (cookie) =>
+        cookie.name.endsWith(`${prefix}session_token`) ||
+        (target === 'main' && cookie.name.endsWith('better-auth.session_token'))
+    );
 
   if (!hasSessionCookie) {
     return { role: null, unavailable: false };
   }
 
   try {
+    const cookieHeader =
+      request.cookies.toString() || (request.headers.get('cookie') ?? '');
     const response = await fetch(new URL('/api/auth/get-session', request.url), {
-      headers: { cookie: request.headers.get('cookie') ?? '' },
+      headers: { cookie: cookieHeader },
       cache: 'no-store',
     });
     if (!response.ok) {
@@ -95,7 +101,19 @@ export async function proxy(request: NextRequest) {
   }
 
   const role = session.role;
-  if (pathname === TARGET_POLICIES[target].loginPath && role) {
+  const isAuthRoute =
+    pathname === TARGET_POLICIES[target].loginPath ||
+    pathname === '/signup' ||
+    pathname === '/sign-up' ||
+    pathname === '/register' ||
+    pathname === '/auth/sign-up' ||
+    pathname === '/auth/signup' ||
+    pathname === '/auth/register' ||
+    pathname === '/auth/login' ||
+    pathname === '/forgot-password' ||
+    pathname === '/reset-password';
+
+  if (isAuthRoute && role) {
     const home = getHomePath(target, role);
     if (home) {
       return NextResponse.redirect(new URL(home, request.url));

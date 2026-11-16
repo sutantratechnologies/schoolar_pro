@@ -1,14 +1,64 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { ArrowRight } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowRight, LayoutDashboard } from 'lucide-react';
+import {
+  authClient,
+  resolveActiveSession,
+} from '@/lib/auth';
 
 interface HeroSectionProps {
   onSearch?: (query: string, degree: string) => void;
 }
 
 export default function HeroSection({ onSearch }: HeroSectionProps) {
+  const { data: session } = authClient.useSession();
+  const [sessionUser, setSessionUser] = useState<{
+    id: string;
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+  } | null>(session?.user ? { ...session.user } : null);
+
+  const user = sessionUser ?? (session?.user ? { ...session.user } : null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const syncSession = async () => {
+      if (session?.user) {
+        if (isMounted) setSessionUser({ ...session.user });
+        return;
+      }
+
+      try {
+        const resolved = await resolveActiveSession();
+        if (isMounted) {
+          if (resolved?.user) {
+            setSessionUser({ ...resolved.user });
+          } else {
+            setSessionUser(null);
+          }
+        }
+      } catch {
+        if (isMounted) setSessionUser(null);
+      }
+    };
+
+    void syncSession();
+
+    const handleFocus = () => {
+      void syncSession();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [session]);
   const scrollToScholarships = () => {
     if (onSearch) {
       onSearch('', 'all');
@@ -65,7 +115,7 @@ export default function HeroSection({ onSearch }: HeroSectionProps) {
           Discover global scholarships, explore opportunities, and plan your next academic journey.
         </p>
 
-        {/* Minimal Action Buttons: "Explore Scholarships →" and "Get Started" */}
+        {/* Minimal Action Buttons: "Explore Scholarships →" and "Get Started" / "Dashboard" */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3">
           <button
             type="button"
@@ -76,13 +126,24 @@ export default function HeroSection({ onSearch }: HeroSectionProps) {
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
 
-          <button
-            type="button"
-            onClick={scrollToGetStarted}
-            className="w-full sm:w-auto px-7 py-3 rounded-full bg-transparent hover:bg-white/10 text-white text-xs sm:text-sm font-normal border border-white/40 hover:border-white transition-all duration-200 cursor-pointer inline-flex items-center justify-center"
-          >
-            Get Started
-          </button>
+          {user ? (
+            <Link
+              href="/dashboard"
+              className="w-full sm:w-auto px-7 py-3 rounded-full bg-[#4b37df] hover:bg-[#3f2cd6] text-white text-xs sm:text-sm font-medium transition-all duration-200 cursor-pointer inline-flex items-center justify-center gap-2 shadow-lg"
+            >
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              <span>Student Portal</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={scrollToGetStarted}
+              className="w-full sm:w-auto px-7 py-3 rounded-full bg-transparent hover:bg-white/10 text-white text-xs sm:text-sm font-normal border border-white/40 hover:border-white transition-all duration-200 cursor-pointer inline-flex items-center justify-center"
+            >
+              Get Started
+            </button>
+          )}
         </div>
       </div>
 

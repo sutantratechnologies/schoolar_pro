@@ -11,9 +11,24 @@ import {
   GraduationCap,
   Briefcase,
   ArrowUpRight,
+  LayoutDashboard,
 } from 'lucide-react';
+import {
+  authClient,
+  resolveActiveSession,
+} from '@/lib/auth';
+import { getAppUrl } from '@/lib/auth/targets';
 
 export default function Navbar() {
+  const { data: session } = authClient.useSession();
+  const [sessionUser, setSessionUser] = useState<{
+    id: string;
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+  } | null>(session?.user ? { ...session.user } : null);
+
+  const user = sessionUser ?? (session?.user ? { ...session.user } : null);
   const [visible, setVisible] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [orgDropdownOpen, setOrgDropdownOpen] = useState(false);
@@ -21,7 +36,49 @@ export default function Navbar() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
+    const syncSession = async () => {
+      if (session?.user) {
+        if (isMounted) setSessionUser({ ...session.user });
+        return;
+      }
+
+      try {
+        const resolved = await resolveActiveSession();
+        if (isMounted) {
+          if (resolved?.user) {
+            setSessionUser({ ...resolved.user });
+          } else {
+            setSessionUser(null);
+          }
+        }
+      } catch {
+        if (isMounted) setSessionUser(null);
+      }
+    };
+
+    void syncSession();
+
+    const handleFocus = () => {
+      void syncSession();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [session]);
+
+  useEffect(() => {
     const handleScroll = () => {
+      // If we are on an internal page (not the root landing page with the huge hero), always show navbar
+      if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+        setVisible(true);
+        return;
+      }
+
       // Show full-size navbar only after scrolling down past the hero section (~450px or 60% viewport)
       const threshold = Math.min(window.innerHeight * 0.65, 500);
       if (window.scrollY > threshold) {
@@ -147,9 +204,9 @@ export default function Navbar() {
                     {/* Divider */}
                     <div className="h-px bg-slate-100 my-1 mx-2" />
 
-                    {/* Item 2: For Consultancies */}
-                    <Link
-                      href="/organizations"
+                    {/* Item 2: For Consultancies & Universities */}
+                    <a
+                      href={getAppUrl('workspace', '/')}
                       onClick={() => setOrgDropdownOpen(false)}
                       className="group flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-all text-left block"
                       role="menuitem"
@@ -168,7 +225,7 @@ export default function Navbar() {
                         </div>
                       </div>
                       <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-slate-900 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0 ml-2" />
-                    </Link>
+                    </a>
                   </div>
                 </div>
               )}
@@ -184,19 +241,46 @@ export default function Navbar() {
 
           {/* Right Action Buttons */}
           <div className="hidden sm:flex items-center gap-3">
-            <Link
-              href="/login"
-              className="px-3.5 py-2 text-xs sm:text-sm font-normal text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/signup"
-              className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-slate-900 hover:bg-[#4b37df] text-white text-xs sm:text-sm font-normal transition-colors cursor-pointer"
-            >
-              <span>Get Started</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            {user ? (
+              <div className="flex items-center gap-2.5">
+                <Link
+                  href="/dashboard"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900 hover:bg-[#4b37df] text-white text-xs sm:text-sm font-medium transition-all shadow-xs"
+                >
+                  <LayoutDashboard className="w-3.5 h-3.5" />
+                  <span>Student Portal</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+                <Link
+                  href="/dashboard/profile"
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-full border border-slate-200 hover:bg-slate-50 transition-colors"
+                  title={(user.name || user.email) ?? undefined}
+                >
+                  <div className="w-6 h-6 rounded-full bg-purple-100 text-[#4b37df] flex items-center justify-center text-[10px] font-bold">
+                    {user.name ? user.name.slice(0, 2).toUpperCase() : 'ST'}
+                  </div>
+                  <span className="text-xs font-medium text-slate-700 max-w-[100px] truncate">
+                    {user.name?.split(' ')[0] || 'Profile'}
+                  </span>
+                </Link>
+              </div>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="px-3.5 py-2 text-xs sm:text-sm font-normal text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/signup"
+                  className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-slate-900 hover:bg-[#4b37df] text-white text-xs sm:text-sm font-normal transition-colors cursor-pointer"
+                >
+                  <span>Get Started</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Toggle */}
@@ -278,8 +362,8 @@ export default function Navbar() {
 
                 <div className="h-px bg-slate-100 my-1 mx-2" />
 
-                <Link
-                  href="/organizations"
+                <a
+                  href={getAppUrl('workspace', '/')}
                   onClick={() => {
                     setMobileMenuOpen(false);
                     setMobileOrgOpen(false);
@@ -300,7 +384,7 @@ export default function Navbar() {
                     </div>
                   </div>
                   <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-slate-900 shrink-0 ml-2" />
-                </Link>
+                </a>
               </div>
             )}
           </div>
@@ -314,20 +398,52 @@ export default function Navbar() {
           </Link>
 
           <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
-            <Link
-              href="/login"
-              onClick={() => setMobileMenuOpen(false)}
-              className="w-full py-2.5 text-center text-xs sm:text-sm font-normal text-slate-700 bg-slate-50 border border-slate-200 rounded-full cursor-pointer block"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/signup"
-              onClick={() => setMobileMenuOpen(false)}
-              className="w-full py-2.5 text-center text-xs sm:text-sm font-normal text-white bg-slate-900 rounded-full text-center block"
-            >
-              Get Started
-            </Link>
+            {user ? (
+              <>
+                <div className="px-3.5 py-2.5 flex items-center gap-3 bg-purple-50/60 rounded-2xl border border-purple-100">
+                  <div className="w-9 h-9 rounded-full bg-[#4b37df] text-white flex items-center justify-center text-xs font-bold">
+                    {user.name ? user.name.slice(0, 2).toUpperCase() : 'ST'}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-slate-900 truncate">
+                      {user.name || 'Student Account'}
+                    </p>
+                    <p className="text-[11px] text-slate-500 truncate">{user.email}</p>
+                  </div>
+                </div>
+                <Link
+                  href="/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full py-2.5 text-center text-xs sm:text-sm font-medium text-white bg-slate-900 hover:bg-[#4b37df] rounded-full block transition-colors shadow-xs"
+                >
+                  Open Student Portal →
+                </Link>
+                <Link
+                  href="/dashboard/profile"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full py-2 text-center text-xs font-medium text-slate-600 hover:text-slate-900 block"
+                >
+                  My Profile & Settings
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full py-2.5 text-center text-xs sm:text-sm font-normal text-slate-700 bg-slate-50 border border-slate-200 rounded-full cursor-pointer block"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/signup"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full py-2.5 text-center text-xs sm:text-sm font-normal text-white bg-slate-900 rounded-full text-center block"
+                >
+                  Get Started
+                </Link>
+              </>
+            )}
           </div>
         </div>
       )}
